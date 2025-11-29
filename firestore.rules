@@ -160,6 +160,12 @@ service cloud.firestore {
       allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
     }
 
+    /**
+     * @description Collection Group rule for 'orders'. Allows an admin to query across all users' orders.
+     * @path /{path=**}/orders/{orderId}
+     * @allow (list) An admin can perform a collection group query on 'orders'.
+     * @principle Enables admin-specific cross-user data aggregation.
+     */
     match /{path=**}/orders/{orderId} {
       allow list: if isAdmin();
     }
