@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import AdminSidebar from './components/admin-sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
 import { doc, getDoc } from 'firebase/firestore';
+import type { User } from '@/lib/definitions';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
@@ -14,7 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // 1. Jangan lakukan apa-apa jika status user masih loading.
+    // 1. Jangan lakukan apa-apa jika user masih loading
     if (isUserLoading) {
       return;
     }
@@ -27,12 +28,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     
     // 3. Jika ada user dan firestore tersedia, periksa status admin.
     if (user && firestore) {
-      const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-      getDoc(adminRoleRef).then(docSnap => {
-        const isAdminUser = docSnap.exists();
-        setIsAdmin(isAdminUser);
-        // 4. Jika user bukan admin, langsung redirect dari sini.
-        if (!isAdminUser) {
+      // **PERBAIKAN UTAMA: Periksa field 'role' di dalam dokumen 'users/{userId}'**
+      const userDocRef = doc(firestore, 'users', user.uid);
+      getDoc(userDocRef).then(docSnap => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data() as User;
+          const isAdminUser = userData.role === 'admin';
+          setIsAdmin(isAdminUser);
+           // 4. Jika user bukan admin, langsung redirect dari sini.
+          if (!isAdminUser) {
+            router.push('/');
+          }
+        } else {
+          // User doc tidak ditemukan, anggap bukan admin
+          setIsAdmin(false);
           router.push('/');
         }
       }).catch(error => {
@@ -43,7 +52,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
   }, [user, isUserLoading, firestore, router]);
   
-  // Tampilkan skeleton jika user masih loading atau status admin belum terverifikasi.
+  // Tampilkan skeleton jika user masih loading ATAU status admin belum terverifikasi.
   if (isUserLoading || isAdmin === null) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -53,7 +62,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Jika semua pengecekan selesai dan user adalah admin, tampilkan layout admin.
-  // Pengecekan `!isAdmin` akan ditangani oleh useEffect di atas.
   if (isAdmin) {
     return (
       <div className="flex min-h-screen">
@@ -66,6 +74,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }
 
   // Fallback jika user bukan admin, sambil menunggu redirect dari useEffect.
+  // Ini seharusnya tidak akan pernah ditampilkan jika logika di atas benar.
   return (
     <div className="flex h-screen w-full items-center justify-center">
       <p>Access Denied. Redirecting...</p>
