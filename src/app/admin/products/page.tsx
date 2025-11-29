@@ -5,8 +5,8 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import type { Product } from '@/lib/definitions';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ProductForm } from './components/product-form';
@@ -15,6 +15,7 @@ import { deleteProduct } from '../actions';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function AdminProductsPage() {
+    const firestore = useFirestore();
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const { toast } = useToast();
@@ -28,13 +29,15 @@ export default function AdminProductsPage() {
 
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, 'products'), (snapshot) => {
+        if (!firestore) return;
+        const q = query(collection(firestore, 'products'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
             const fetchedProducts = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
             setProducts(fetchedProducts);
             setLoading(false);
         });
         return () => unsubscribe();
-    }, []);
+    }, [firestore]);
 
     const handleAddProduct = () => {
         setEditingProduct(null);
@@ -92,7 +95,7 @@ export default function AdminProductsPage() {
             <DataTable columns={columns} data={products} />
 
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogContent className="sm:max-w-[425px]">
+                <DialogContent className="sm:max-w-lg">
                    <ProductForm product={editingProduct} onFormAction={() => setIsFormOpen(false)} />
                 </DialogContent>
             </Dialog>

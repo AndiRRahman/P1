@@ -1,17 +1,17 @@
 'use server';
 
 import { z } from 'zod';
-import { db } from '@/lib/firebase';
 import { addDoc, collection, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
-import { redirect } from 'next/navigation';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeAdminApp } from '@/lib/firebase-admin';
 
 const ProductSchema = z.object({
   id: z.string().optional(),
   name: z.string().min(1, 'Name is required'),
   description: z.string().min(1, 'Description is required'),
   price: z.coerce.number().min(0.01, 'Price must be positive'),
-  stock: z.coerce.number().int().min(0, 'Stock cannot be negative'),
+  stockQuantity: z.coerce.number().int().min(0, 'Stock cannot be negative'),
   category: z.string().min(1, 'Category is required'),
   imageUrl: z.string().url('Must be a valid URL'),
   imageHint: z.string().optional(),
@@ -25,7 +25,7 @@ export type State = {
     name?: string[];
     description?: string[];
     price?: string[];
-    stock?: string[];
+    stockQuantity?: string[];
     category?: string[];
     imageUrl?: string[];
   };
@@ -33,6 +33,8 @@ export type State = {
 };
 
 export async function createProduct(prevState: State, formData: FormData) {
+  await initializeAdminApp();
+  const db = getFirestore();
   const validatedFields = CreateProduct.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
@@ -42,12 +44,12 @@ export async function createProduct(prevState: State, formData: FormData) {
     };
   }
 
-  const { name, description, price, stock, category, imageUrl, imageHint } = validatedFields.data;
+  const { name, description, price, stockQuantity, category, imageUrl, imageHint } = validatedFields.data;
 
   try {
     await addDoc(collection(db, 'products'), {
-      name, description, price, stock, category, imageUrl,
-      imageHint: imageHint || `${name.split(' ').slice(0,2).join(' ')}`, // Auto-generate hint if not provided
+      name, description, price, stockQuantity, category, imageUrl,
+      imageHint: imageHint || `${name.split(' ').slice(0,2).join(' ')}`,
     });
   } catch (error) {
     return { message: 'Database Error: Failed to Create Product.' };
@@ -55,10 +57,12 @@ export async function createProduct(prevState: State, formData: FormData) {
 
   revalidatePath('/admin/products');
   revalidatePath('/');
-  return { message: 'Product created successfully', errors: {}, ...prevState};
+  return { message: 'Product created successfully', errors: {} };
 }
 
 export async function updateProduct(prevState: State, formData: FormData) {
+    await initializeAdminApp();
+    const db = getFirestore();
   const validatedFields = UpdateProduct.safeParse(Object.fromEntries(formData.entries()));
 
   if (!validatedFields.success) {
@@ -83,11 +87,13 @@ export async function updateProduct(prevState: State, formData: FormData) {
   revalidatePath('/admin/products');
   revalidatePath(`/products/${id}`);
   revalidatePath('/');
-  return { message: 'Product updated successfully', errors: {}, ...prevState};
+  return { message: 'Product updated successfully', errors: {} };
 }
 
 
 export async function deleteProduct(productId: string) {
+    await initializeAdminApp();
+    const db = getFirestore();
     try {
         await deleteDoc(doc(db, 'products', productId));
         revalidatePath('/admin/products');

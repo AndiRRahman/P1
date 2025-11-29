@@ -11,7 +11,7 @@ import { useTransition } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { updateOrderStatus } from '../actions';
 
-const OrderStatusSelector = ({ orderId, currentStatus }: { orderId: string, currentStatus: Order['status'] }) => {
+const OrderStatusSelector = ({ order }: { order: Order }) => {
     const [isPending, startTransition] = useTransition();
     const { toast } = useToast();
 
@@ -27,7 +27,7 @@ const OrderStatusSelector = ({ orderId, currentStatus }: { orderId: string, curr
     
     const onStatusChange = (newStatus: Order['status']) => {
         startTransition(async () => {
-            const result = await updateOrderStatus(orderId, newStatus);
+            const result = await updateOrderStatus(order.id, newStatus, order.userId);
             if (result.success) {
                 toast({ title: 'Success', description: 'Order status has been updated.' });
             } else {
@@ -38,8 +38,8 @@ const OrderStatusSelector = ({ orderId, currentStatus }: { orderId: string, curr
 
     return (
         <div className="relative">
-             <Select defaultValue={currentStatus} onValueChange={(value) => onStatusChange(value as Order['status'])} disabled={isPending}>
-                <SelectTrigger className={cn("h-8 w-32 border", getStatusVariant(currentStatus))}>
+             <Select defaultValue={order.status} onValueChange={(value) => onStatusChange(value as Order['status'])} disabled={isPending}>
+                <SelectTrigger className={cn("h-8 w-32 border", getStatusVariant(order.status))}>
                     <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -58,22 +58,22 @@ export const columns: ColumnDef<Order>[] = [
   {
     accessorKey: 'id',
     header: 'Order ID',
-    cell: ({row}) => <span className="font-mono">#{row.original.id.slice(0,7)}</span>
+    cell: ({row}) => <span className="font-mono">#{(row.original.id || '').slice(0,7)}</span>
   },
    {
-    accessorKey: 'customerName',
+    accessorKey: 'User.firstName',
     header: 'Customer',
   },
   {
-    accessorKey: 'createdAt',
+    accessorKey: 'orderDate',
     header: 'Date',
-    cell: ({row}) => new Date(row.original.createdAt).toLocaleDateString()
+    cell: ({row}) => new Date(row.original.orderDate).toLocaleDateString()
   },
   {
-    accessorKey: 'total',
+    accessorKey: 'totalAmount',
     header: () => <div className="text-right">Total</div>,
     cell: ({ row }) => {
-      const total = parseFloat(row.getValue('total'));
+      const total = parseFloat(row.getValue('totalAmount'));
       const formatted = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'USD',
@@ -87,7 +87,7 @@ export const columns: ColumnDef<Order>[] = [
     header: 'Status',
     cell: ({ row }) => {
         const order = row.original;
-        return <OrderStatusSelector orderId={order.id} currentStatus={order.status} />
+        return <OrderStatusSelector order={order} />
     }
   },
   {

@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { LogIn, ShoppingCart, User, Crown, Menu } from 'lucide-react';
-import { useAuth } from '@/context/auth-context';
+import { LogIn, ShoppingCart, User, Crown, Menu, LogOut } from 'lucide-react';
+import { useUser, useAuth as useFirebaseAuth } from '@/firebase';
 import { useCart } from '@/context/cart-context';
 import { Button } from '@/components/ui/button';
 import { Icons } from '@/components/icons';
@@ -23,13 +23,33 @@ import {
   SheetContent,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 
 export default function Header() {
-  const { user } = useAuth();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const [isAdmin, setIsAdmin] = useState(false);
   const { itemCount } = useCart();
   const router = useRouter();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (user && firestore) {
+        const userDoc = await getDoc(doc(firestore, 'users', user.uid));
+        if (userDoc.exists() && userDoc.data().role === 'admin') {
+          setIsAdmin(true);
+        } else {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [user, firestore]);
 
   const handleSignOut = async () => {
     const auth = getAuth();
@@ -66,7 +86,7 @@ export default function Header() {
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          {user?.role === 'admin' && (
+          {isAdmin && (
              <DropdownMenuItem onSelect={() => router.push('/admin/dashboard')}>
                <Crown className="mr-2 h-4 w-4" />
                <span>Admin</span>
@@ -74,6 +94,7 @@ export default function Header() {
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onSelect={handleSignOut}>
+            <LogOut className="mr-2 h-4 w-4" />
             <span>Log out</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -130,7 +151,7 @@ export default function Header() {
             </Link>
           </Button>
 
-          {user?.role === 'user' || user?.role === 'admin' ? (
+          {isUserLoading ? null : user ? (
             <UserMenu />
           ) : (
             <Button asChild>

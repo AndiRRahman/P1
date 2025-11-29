@@ -15,19 +15,20 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCart } from '@/context/cart-context';
-import { useAuth } from '@/context/auth-context';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { addDoc, collection } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { addDoc, collection, doc, getDoc, serverTimestamp } from 'firebase/firestore';
 import Image from 'next/image';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/components/ui/use-toast';
+import { useEffect } from 'react';
+import type { User } from '@/lib/definitions';
 
 const formSchema = z.object({
-  name: z.string().min(2, "Name is required"),
+  firstName: z.string().min(2, "First name is required"),
+  lastName: z.string().min(2, "Last name is required"),
   address: z.string().min(5, "Address is required"),
-  city: z.string().min(2, "City is required"),
-  zip: z.string().min(5, "ZIP code is required"),
+  phone: z.string().min(5, "Phone is required"),
   card: z.string().regex(/^\d{16}$/, "Invalid card number"),
   expiry: z.string().regex(/^\d{2}\/\d{2}$/, "Invalid expiry date (MM/YY)"),
   cvc: z.string().regex(/^\d{3,4}$/, "Invalid CVC"),
@@ -35,20 +36,43 @@ const formSchema = z.object({
 
 export default function CheckoutPage() {
   const { cart, cartTotal, clearCart, itemCount } = useCart();
-  const { user } = useAuth();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      name: user?.displayName || '',
-      address: '', city: '', zip: '', card: '', expiry: '', cvc: '',
+      firstName: '',
+      lastName: '',
+      address: '', 
+      phone: '',
+      card: '', 
+      expiry: '', 
+      cvc: '',
     },
   });
 
+  useEffect(() => {
+    if (user) {
+      const userRef = doc(firestore, 'users', user.uid);
+      getDoc(userRef).then(docSnap => {
+        if (docSnap.exists()) {
+          const userData = docSnap.data() as User;
+          form.reset({
+            firstName: userData.firstName || '',
+            lastName: userData.lastName || '',
+            address: userData.address || '',
+            phone: userData.phone || '',
+          });
+        }
+      });
+    }
+  }, [user, firestore, form]);
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user || user.role === 'guest') {
+    if (!user) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'Please log in to place an order.' });
         return router.push('/login');
     }
@@ -58,25 +82,20 @@ export default function CheckoutPage() {
     }
     
     try {
-      await addDoc(collection(db, 'orders'), {
+      const orderRef = collection(firestore, 'users', user.uid, 'orders');
+      await addDoc(orderRef, {
         userId: user.uid,
-        customerName: values.name,
-        customerEmail: user.email,
-        shippingAddress: {
-            address: values.address,
-            city: values.city,
-            zip: values.zip,
-        },
-        items: cart,
-        total: cartTotal,
+        orderDate: serverTimestamp(),
+        totalAmount: cartTotal,
         status: 'Pending',
-        createdAt: new Date().getTime(),
+        shippingAddress: values.address,
+        items: cart,
       });
 
       clearCart();
       router.push('/order-success');
-    } catch(error) {
-        toast({ variant: 'destructive', title: 'Order Failed', description: 'Could not place your order. Please try again.' });
+    } catch(error: any) {
+        toast({ variant: 'destructive', title: 'Order Failed', description: error.message || 'Could not place your order. Please try again.' });
     }
   }
   
@@ -91,20 +110,20 @@ export default function CheckoutPage() {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <h3 className="font-semibold text-lg">Shipping Address</h3>
-                        <FormField control={form.control} name="name" render={({ field }) => (
-                            <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
+                        <div className="grid grid-cols-2 gap-4">
+                             <FormField control={form.control} name="firstName" render={({ field }) => (
+                                <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                             <FormField control={form.control} name="lastName" render={({ field }) => (
+                                <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                        </div>
                         <FormField control={form.control} name="address" render={({ field }) => (
                             <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField control={form.control} name="city" render={({ field }) => (
-                                <FormItem><FormLabel>City</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                            )}/>
-                            <FormField control={form.control} name="zip" render={({ field }) => (
-                                <FormItem><FormLabel>ZIP Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                            )}/>
-                        </div>
+                        <FormField control={form.control} name="phone" render={({ field }) => (
+                            <FormItem><FormLabel>Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
                         <Separator className="my-6"/>
                         <h3 className="font-semibold text-lg">Payment Details</h3>
                         <FormField control={form.control} name="card" render={({ field }) => (

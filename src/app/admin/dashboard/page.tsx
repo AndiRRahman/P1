@@ -1,10 +1,10 @@
 'use client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DollarSign, Package, ShoppingCart } from 'lucide-react';
+import { DollarSign, Package, ShoppingCart, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
-import { collection, getDocs, onSnapshot, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 import type { Order } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -13,32 +13,46 @@ interface Stats {
     totalSales: number;
     newOrders: number;
     totalProducts: number;
+    totalCustomers: number;
 }
 
 export default function DashboardPage() {
-    const [stats, setStats] = useState<Stats>({ totalRevenue: 0, totalSales: 0, newOrders: 0, totalProducts: 0 });
+    const firestore = useFirestore();
+    const [stats, setStats] = useState<Stats>({ totalRevenue: 0, totalSales: 0, newOrders: 0, totalProducts: 0, totalCustomers: 0 });
     const [salesData, setSalesData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const fetchProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+        if (!firestore) return;
+
+        const productsQuery = query(collection(firestore, 'products'));
+        const ordersQuery = query(collection(firestore, 'users', '{userId}', 'orders'));
+        const usersQuery = query(collection(firestore, 'users'), where('role', '==', 'user'));
+
+        const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
             setStats(prev => ({ ...prev, totalProducts: snapshot.size }));
         });
+        
+        const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
+            setStats(prev => ({ ...prev, totalCustomers: snapshot.size }));
+        });
 
-        const fetchOrders = onSnapshot(collection(db, 'orders'), (snapshot) => {
-            const orders = snapshot.docs.map(doc => doc.data() as Order);
+        const unsubOrders = onSnapshot(ordersQuery, (snapshot) => {
+            const orders: Order[] = [];
+            snapshot.forEach(doc => {
+                orders.push({ id: doc.id, ...doc.data() } as Order);
+            });
             
-            const totalRevenue = orders.reduce((sum, order) => order.status === 'Delivered' ? sum + order.total : sum, 0);
-            const totalSales = orders.filter(order => order.status === 'Delivered').length;
+            const totalRevenue = orders.reduce((sum, order) => (order.status === 'Delivered' || order.status === 'Shipped') ? sum + order.totalAmount : sum, 0);
+            const totalSales = orders.filter(order => order.status === 'Delivered' || order.status === 'Shipped').length;
             const newOrders = orders.filter(order => order.status === 'Pending').length;
             
             setStats(prev => ({ ...prev, totalRevenue, totalSales, newOrders }));
 
-            // Aggregate sales data by month
             const monthlySales = orders.reduce((acc, order) => {
-                if (order.status === 'Delivered') {
-                    const month = new Date(order.createdAt).toLocaleString('default', { month: 'short' });
-                    acc[month] = (acc[month] || 0) + order.total;
+                if (order.status === 'Delivered' || order.status === 'Shipped') {
+                    const month = new Date(order.orderDate).toLocaleString('default', { month: 'short' });
+                    acc[month] = (acc[month] || 0) + order.totalAmount;
                 }
                 return acc;
             }, {} as Record<string, number>);
@@ -50,10 +64,11 @@ export default function DashboardPage() {
         });
 
         return () => {
-            fetchProducts();
-            fetchOrders();
+            unsubProducts();
+            unsubOrders();
+            unsubUsers();
         }
-    }, []);
+    }, [firestore]);
 
     if (loading) {
         return (
@@ -94,11 +109,11 @@ export default function DashboardPage() {
                 </Card>
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">New Orders</CardTitle>
-                        <Package className="h-4 w-4 text-muted-foreground" />
+                        <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">+{stats.newOrders}</div>
+                        <div className="text-2xl font-bold">{stats.totalCustomers}</div>
                     </CardContent>
                 </Card>
                  <Card>
@@ -108,7 +123,6 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold">{stats.totalProducts}</div>
-                        <p className="text-xs text-muted-foreground">Live on site</p>
                     </CardContent>
                 </Card>
             </div>

@@ -1,44 +1,43 @@
 'use client';
 
-import { useAuth } from '@/context/auth-context';
+import { useUser, useFirestore } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-import type { Order } from '@/lib/definitions';
+import { collection, query, onSnapshot, orderBy, Timestamp } from 'firebase/firestore';
+import type { Order, User } from '@/lib/definitions';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function ProfilePage() {
-  const { user, loading } = useAuth();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [appUser, setAppUser] = useState<User | null>(null);
 
   useEffect(() => {
-    if (!loading && user?.role === 'guest') {
+    if (!isUserLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, isUserLoading, router]);
   
   useEffect(() => {
-    async function fetchOrders() {
-      if(user?.uid) {
-        setOrdersLoading(true);
-        const q = query(collection(db, 'orders'), where('userId', '==', user.uid), orderBy('createdAt', 'desc'));
-        const querySnapshot = await getDocs(q);
-        const userOrders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-        setOrders(userOrders);
-        setOrdersLoading(false);
-      }
+    if(user && firestore) {
+        const q = query(collection(firestore, 'users', user.uid, 'orders'), orderBy('orderDate', 'desc'));
+        const unsubscribe = onSnapshot(q, (querySnapshot) => {
+            const userOrders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+            setOrders(userOrders);
+            setOrdersLoading(false);
+        });
+        return () => unsubscribe();
     }
-    fetchOrders();
-  }, [user]);
+  }, [user, firestore]);
 
-  if (loading || !user || user.role === 'guest') {
+  if (isUserLoading || !user) {
     return <div className="container mx-auto py-12"><Skeleton className="h-96 w-full" /></div>;
   }
   
@@ -50,6 +49,19 @@ export default function ProfilePage() {
         case 'Cancelled': return 'destructive';
         default: return 'secondary';
     }
+  }
+
+  const formatDate = (timestamp: any) => {
+    if (timestamp instanceof Timestamp) {
+      return timestamp.toDate().toLocaleDateString();
+    }
+    if (typeof timestamp === 'string') {
+        return new Date(timestamp).toLocaleDateString();
+    }
+    if (timestamp && typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toLocaleDateString();
+    }
+    return 'Invalid Date';
   }
 
   return (
@@ -83,16 +95,16 @@ export default function ProfilePage() {
                                 <li key={order.id} className="p-4 md:p-6">
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="font-semibold text-lg">Order #{order.id.slice(0, 7)}</p>
+                                            <p className="font-semibold text-lg">Order #{(order.id || '').slice(0, 7)}</p>
                                             <p className="text-sm text-muted-foreground">
-                                                {new Date(order.createdAt).toLocaleDateString()}
+                                                {formatDate(order.orderDate)}
                                             </p>
                                         </div>
                                         <Badge variant={getStatusVariant(order.status)}>{order.status}</Badge>
                                     </div>
                                     <Separator className="my-4" />
                                     <ul className="space-y-2">
-                                        {order.items.map(item => (
+                                        {(order.items || []).map(item => (
                                             <li key={item.id} className="flex justify-between items-center text-sm">
                                                 <p>{item.name} <span className="text-muted-foreground">x {item.quantity}</span></p>
                                                 <p>${(item.price * item.quantity).toFixed(2)}</p>
@@ -101,7 +113,7 @@ export default function ProfilePage() {
                                     </ul>
                                     <Separator className="my-4" />
                                      <div className="flex justify-end font-bold">
-                                        <p>Total: ${order.total.toFixed(2)}</p>
+                                        <p>Total: ${order.totalAmount.toFixed(2)}</p>
                                     </div>
                                 </li>
                             ))}

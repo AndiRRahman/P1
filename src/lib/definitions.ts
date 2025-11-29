@@ -1,4 +1,5 @@
-import type { User as FirebaseUser } from 'firebase/auth';
+import type { User as FirebaseUser, UserInfo } from 'firebase/auth';
+import { Timestamp } from 'firebase/firestore';
 
 export type Product = {
   id: string;
@@ -7,7 +8,7 @@ export type Product = {
   price: number;
   imageUrl: string;
   imageHint: string;
-  stock: number;
+  stockQuantity: number;
   category: string;
 };
 
@@ -22,19 +23,26 @@ export type CartItem = {
 export type Order = {
   id: string;
   userId: string;
-  customerName: string;
-  customerEmail: string;
   items: CartItem[];
-  total: number;
+  totalAmount: number;
   status: 'Pending' | 'Shipped' | 'Delivered' | 'Cancelled';
-  createdAt: number;
+  orderDate: Timestamp | string;
+  shippingAddress: string;
+  User: User;
 };
 
-export type AppUser = {
-  uid: string;
-  email: string | null;
-  displayName: string | null;
-  role: 'guest' | 'user' | 'admin';
+export type User = {
+  id: string,
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: 'customer' | 'admin';
+  address: string;
+  phone: string;
+}
+
+export type AppUser = UserInfo & {
+  role: 'guest' | 'customer' | 'admin';
 };
 
 export interface AuthContextType {

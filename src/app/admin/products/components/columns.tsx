@@ -45,10 +45,10 @@ export const getColumns = ({ onEdit, onDelete }: GetColumnsProps): ColumnDef<Pro
     },
   },
   {
-    accessorKey: 'stock',
+    accessorKey: 'stockQuantity',
     header: 'Stock',
     cell: ({ row }) => {
-        const stock = row.original.stock;
+        const stock = row.original.stockQuantity;
         return (
              <Badge variant={stock > 10 ? 'default' : stock > 0 ? 'secondary' : 'destructive'} className="bg-opacity-20 border-opacity-30">
                 {stock > 0 ? `${stock} in stock` : 'Out of stock'}

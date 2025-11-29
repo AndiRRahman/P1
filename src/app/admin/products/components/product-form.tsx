@@ -11,17 +11,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { DialogHeader, DialogTitle, DialogFooter, DialogClose } from '@/components/ui/dialog';
 import type { Product } from '@/lib/definitions';
-import { createProduct, updateProduct, type State } from '../actions';
+import { createProduct, updateProduct } from '../actions';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { State } from '../actions';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   description: z.string().min(10, { message: 'Description must be at least 10 characters.' }),
   price: z.coerce.number().min(0.01, 'Price must be a positive number.'),
-  stock: z.coerce.number().int().min(0, 'Stock cannot be negative.'),
+  stockQuantity: z.coerce.number().int().min(0, 'Stock cannot be negative.'),
   category: z.string().min(2, { message: 'Category is required.' }),
   imageUrl: z.string().url({ message: 'Please enter a valid URL.' }),
+  imageHint: z.string().optional(),
 });
 
 interface ProductFormProps {
@@ -39,25 +41,28 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
       name: product?.name || '',
       description: product?.description || '',
       price: product?.price || 0,
-      stock: product?.stock || 0,
+      stockQuantity: product?.stockQuantity || 0,
       category: product?.category || '',
       imageUrl: product?.imageUrl || '',
+      imageHint: product?.imageHint || '',
     },
   });
 
+  const initialState: State = { message: null, errors: {} };
   const action = isEditing ? updateProduct : createProduct;
-  const [state, dispatch] = useFormState(action, { message: null, errors: {} });
+  const [state, dispatch] = useFormState(action, initialState);
 
   useEffect(() => {
-    if (state.message) {
+    if (state?.message) {
       if (state.errors && Object.keys(state.errors).length > 0) {
         toast({ variant: 'destructive', title: 'Error', description: state.message });
       } else {
         toast({ title: 'Success', description: state.message });
         onFormAction();
+        form.reset();
       }
     }
-  }, [state, toast, onFormAction]);
+  }, [state, toast, onFormAction, form]);
   
   return (
     <>
@@ -77,7 +82,7 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
                 <FormField control={form.control} name="price" render={({ field }) => (
                     <FormItem><FormLabel>Price</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
-                <FormField control={form.control} name="stock" render={({ field }) => (
+                <FormField control={form.control} name="stockQuantity" render={({ field }) => (
                     <FormItem><FormLabel>Stock</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                 )}/>
             </div>
@@ -86,6 +91,9 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
             )}/>
             <FormField control={form.control} name="imageUrl" render={({ field }) => (
                 <FormItem><FormLabel>Image URL</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+            )}/>
+            <FormField control={form.control} name="imageHint" render={({ field }) => (
+                <FormItem><FormLabel>Image Hint</FormLabel><FormControl><Input placeholder="e.g. 'blue shoes'" {...field} /></FormControl><FormMessage /></FormItem>
             )}/>
 
             <DialogFooter>
