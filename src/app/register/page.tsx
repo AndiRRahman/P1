@@ -45,6 +45,10 @@ export default function RegisterPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!firestore || !auth) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Firebase not initialized' });
+        return;
+    }
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
@@ -72,7 +76,9 @@ export default function RegisterPage() {
 
       if (role === 'admin') {
         const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-        batch.set(adminRoleRef, { role: 'admin' });
+        // Set an empty document to signify the user is an admin.
+        // The existence of this document is what's checked in the admin layout.
+        batch.set(adminRoleRef, {});
       }
       
       await batch.commit();

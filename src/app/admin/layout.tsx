@@ -14,7 +14,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (isUserLoading) {
+    if (isUserLoading || !firestore) {
       return; 
     }
 
@@ -23,21 +23,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       return;
     }
 
-    if (firestore) {
+    const checkAdminStatus = async () => {
       const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-      getDoc(adminRoleRef).then(docSnap => {
+      try {
+        const docSnap = await getDoc(adminRoleRef);
         if (docSnap.exists()) {
           setIsAdmin(true);
         } else {
           setIsAdmin(false);
-          router.push('/'); 
+          router.push('/');
         }
-      }).catch(error => {
+      } catch (error) {
         console.error("Error checking admin role:", error);
         setIsAdmin(false);
         router.push('/');
-      });
-    }
+      }
+    };
+    
+    checkAdminStatus();
+
   }, [user, isUserLoading, firestore, router]);
   
   if (isAdmin === null || isUserLoading) {
@@ -59,9 +63,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
+  // This part should ideally not be reached if router.push('/') works correctly,
+  // but it's a good fallback.
   return (
     <div className="flex h-screen w-full items-center justify-center">
-      <p>Redirecting...</p>
+      <p>Access Denied. Redirecting...</p>
     </div>
   );
 }
