@@ -3,8 +3,7 @@
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useFormState } from 'react-dom';
-import { useEffect, useState, useRef } from 'react';
+import { useActionState, useEffect, useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -72,7 +71,7 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
 
   const initialState: State = { message: null, errors: {} };
   const action = isEditing ? updateProduct : createProduct;
-  const [state, dispatch] = useFormState(action, initialState);
+  const [state, dispatch] = useActionState(action, initialState);
 
   useEffect(() => {
     if (state?.message) {
