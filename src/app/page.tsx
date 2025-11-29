@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { collection, onSnapshot, limit, query } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirestore } from '@/firebase';
 import type { Product } from '@/lib/definitions';
 import ProductCard from '@/components/product-card';
 import { Button } from '@/components/ui/button';
@@ -10,18 +10,20 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
+  const firestore = useFirestore();
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const q = query(collection(db, 'products'), limit(8));
+    if (!firestore) return;
+    const q = query(collection(firestore, 'products'), limit(8));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       setFeaturedProducts(products);
       setLoading(false);
-    });
+    }, () => setLoading(false));
     return () => unsubscribe();
-  }, []);
+  }, [firestore]);
 
   return (
     <div className="w-full">

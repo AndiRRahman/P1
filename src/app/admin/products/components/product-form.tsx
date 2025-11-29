@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useActionState, useEffect, useState, useRef } from 'react';
@@ -16,10 +16,8 @@ import { Loader2, UploadCloud, X } from 'lucide-react';
 import { State } from '../actions';
 import { Progress } from '@/components/ui/progress';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { app } from '@/lib/firebase';
+import { useStorage } from '@/firebase'; // Menggunakan hook kustom
 import Image from 'next/image';
-
-const storage = getStorage(app);
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -52,6 +50,7 @@ type UploadStatus = {
 
 export function ProductForm({ product, onFormAction }: ProductFormProps) {
   const { toast } = useToast();
+  const storage = useStorage(); // Dapatkan instance storage
   const isEditing = !!product;
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({});
@@ -86,6 +85,10 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
   }, [state, toast, onFormAction, form]);
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!storage) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Storage service not available.' });
+        return;
+    }
     const files = event.target.files;
     if (!files || files.length === 0) return;
 

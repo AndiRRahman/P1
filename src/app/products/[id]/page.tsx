@@ -9,7 +9,7 @@ import { Minus, Plus, ShoppingCart } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { useFirestore } from '@/firebase';
 import type { Product } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
@@ -19,9 +19,11 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   const { addToCart } = useCart();
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
+  const firestore = useFirestore();
 
   useEffect(() => {
-    const docRef = doc(db, 'products', params.id);
+    if (!firestore) return;
+    const docRef = doc(firestore, 'products', params.id);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -32,9 +34,9 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
         notFound();
       }
       setLoading(false);
-    });
+    }, () => setLoading(false));
     return () => unsubscribe();
-  }, [params.id]);
+  }, [params.id, firestore]);
 
   if (loading) {
     return (
