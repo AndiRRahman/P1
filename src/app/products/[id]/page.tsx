@@ -88,8 +88,8 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
           </p>
 
           <div className="mt-8">
-            <p className={`text-sm font-medium ${product.stock > 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+            <p className={`text-sm font-medium ${product.stockQuantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {product.stockQuantity > 0 ? `${product.stockQuantity} in stock` : 'Out of stock'}
             </p>
           </div>
 
@@ -104,13 +104,13 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
                     onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value, 10) || 1))}
                     className="w-16 text-center"
                     min="1"
-                    max={product.stock}
+                    max={product.stockQuantity}
                 />
-                <Button variant="outline" size="icon" onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}>
+                <Button variant="outline" size="icon" onClick={() => setQuantity(q => Math.min(product.stockQuantity, q + 1))}>
                     <Plus className="h-4 w-4" />
                 </Button>
             </div>
-            <Button size="lg" onClick={handleAddToCart} disabled={product.stock === 0}>
+            <Button size="lg" onClick={handleAddToCart} disabled={product.stockQuantity === 0}>
                 <ShoppingCart className="mr-2 h-5 w-5" />
                 Add to Cart
             </Button>
