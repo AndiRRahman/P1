@@ -78,18 +78,18 @@ service cloud.firestore {
     }
 
     /**
-     * Validates that the `id` field within a new user document matches the
+     * Validates that the `uid` field within a new user document matches the
      * document's ID in the path, ensuring relational integrity on creation.
      */
     function hasValidUserId(userId) {
-      return request.resource.data.id == userId;
+      return request.resource.data.uid == userId;
     }
     
     /**
-     * Ensures the `id` field of a user document cannot be changed after creation.
+     * Ensures the `uid` field of a user document cannot be changed after creation.
      */
     function isUserIdImmutable() {
-      return request.resource.data.id == resource.data.id;
+      return request.resource.data.uid == resource.data.uid;
     }
 
     /**
@@ -205,3 +205,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
