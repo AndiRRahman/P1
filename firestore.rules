@@ -139,7 +139,7 @@ service cloud.firestore {
      */
     match /users/{userId} {
       allow get: if isOwnerOrAdmin(userId);
-      allow list: if false;
+      allow list: if isAdmin();
       allow create: if isOwner(userId) && hasValidUserId(userId);
       allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isUserIdImmutable();
       allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
@@ -160,6 +160,10 @@ service cloud.firestore {
       allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
     }
 
+    match /{path=**}/orders/{orderId} {
+      allow list: if isAdmin();
+    }
+    
     /**
      * @description Items within a specific order. Access rules are inherited from the parent order.
      * @path /users/{userId}/orders/{orderId}/orderItems/{orderItemId}
@@ -205,5 +209,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, getCountFromServer, collection } from 'firebase/firestore';
+import { doc, setDoc, getCountFromServer, collection, writeBatch } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -57,7 +57,10 @@ export default function RegisterPage() {
       const userCount = snapshot.data().count;
       const role = userCount === 0 ? 'admin' : 'customer';
 
-      await setDoc(doc(firestore, 'users', user.uid), {
+      const batch = writeBatch(firestore);
+
+      const userDocRef = doc(firestore, 'users', user.uid);
+      batch.set(userDocRef, {
         id: user.uid,
         email: values.email,
         firstName: values.firstName,
@@ -66,6 +69,13 @@ export default function RegisterPage() {
         address: '',
         phone: '',
       });
+
+      if (role === 'admin') {
+        const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
+        batch.set(adminRoleRef, { role: 'admin' });
+      }
+      
+      await batch.commit();
       
       toast({
         title: 'Account Created',

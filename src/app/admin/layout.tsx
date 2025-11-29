@@ -18,17 +18,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const checkAdminRole = async () => {
-      if (isUserLoading) return;
+      if (isUserLoading || !firestore) return;
 
       if (!user) {
         router.push('/login');
         return;
       }
       
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
+      const adminRoleDoc = await getDoc(adminRoleRef);
       
-      if (userDoc.exists() && userDoc.data().role === 'admin') {
+      if (adminRoleDoc.exists()) {
         setIsAdmin(true);
       } else {
         router.push('/');

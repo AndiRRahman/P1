@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, Package, ShoppingCart, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, collectionGroup } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Order } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,15 +26,18 @@ export default function DashboardPage() {
         if (!firestore) return;
 
         const productsQuery = query(collection(firestore, 'products'));
-        const ordersQuery = query(collection(firestore, 'users', '{userId}', 'orders'));
-        const usersQuery = query(collection(firestore, 'users'), where('role', '==', 'user'));
+        const ordersQuery = query(collectionGroup(firestore, 'orders'));
+        const usersQuery = query(collection(firestore, 'users'));
 
         const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
             setStats(prev => ({ ...prev, totalProducts: snapshot.size }));
+            setLoading(false);
         });
         
         const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
-            setStats(prev => ({ ...prev, totalCustomers: snapshot.size }));
+            const customerCount = snapshot.docs.filter(doc => doc.data().role !== 'admin').length;
+            setStats(prev => ({ ...prev, totalCustomers: customerCount }));
+            setLoading(false);
         });
 
         const unsubOrders = onSnapshot(ordersQuery, (snapshot) => {
@@ -50,8 +53,9 @@ export default function DashboardPage() {
             setStats(prev => ({ ...prev, totalRevenue, totalSales, newOrders }));
 
             const monthlySales = orders.reduce((acc, order) => {
-                if (order.status === 'Delivered' || order.status === 'Shipped') {
-                    const month = new Date(order.orderDate).toLocaleString('default', { month: 'short' });
+                const orderDate = (order.orderDate as any)?.toDate ? (order.orderDate as any).toDate() : new Date(order.orderDate);
+                if ((order.status === 'Delivered' || order.status === 'Shipped') && orderDate instanceof Date) {
+                    const month = orderDate.toLocaleString('default', { month: 'short' });
                     acc[month] = (acc[month] || 0) + order.totalAmount;
                 }
                 return acc;
@@ -73,7 +77,7 @@ export default function DashboardPage() {
     if (loading) {
         return (
             <div className="space-y-8">
-                <Skeleton className="h-10 w-64" />
+                <h1 className="text-3xl font-bold font-headline">Dashboard</h1>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <Skeleton className="h-32" />
                     <Skeleton className="h-32" />
