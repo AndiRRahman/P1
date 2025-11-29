@@ -41,19 +41,23 @@ export default function LoginPage() {
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    if (!auth || !firestore) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Firebase not initialized' });
+        return;
+    }
     try {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      const userDocRef = doc(firestore, 'users', user.uid);
-      const userDoc = await getDoc(userDocRef);
+      const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
+      const adminDoc = await getDoc(adminRoleRef);
       
       toast({
         title: 'Login Successful',
         description: "Welcome back!",
       });
 
-      if (userDoc.exists() && userDoc.data().role === 'admin') {
+      if (adminDoc.exists()) {
         router.push('/admin/dashboard');
       } else {
         router.push('/profile');
