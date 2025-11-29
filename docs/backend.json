@@ -18,10 +18,29 @@
           "type": "string",
           "description": "Detailed description of the product."
         },
-        "imageUrl": {
-          "type": "string",
-          "description": "URL of the product image.",
-          "format": "uri"
+        "media": {
+          "type": "array",
+          "description": "An array of media objects (images or videos) for the product.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string",
+                "format": "uri",
+                "description": "Public URL of the media file."
+              },
+              "type": {
+                "type": "string",
+                "enum": ["image", "video"],
+                "description": "Type of the media."
+              },
+              "path": {
+                "type": "string",
+                "description": "Path to the file in Firebase Storage."
+              }
+            },
+            "required": ["url", "type", "path"]
+          }
         },
         "price": {
           "type": "number",
@@ -40,7 +59,7 @@
         "id",
         "name",
         "description",
-        "imageUrl",
+        "media",
         "price",
         "stockQuantity",
         "category"

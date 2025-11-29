@@ -12,6 +12,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Product } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 
 export default function ProductDetailPage({ params }: { params: { id: string } }) {
   const [quantity, setQuantity] = useState(1);
@@ -23,7 +24,10 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
     const docRef = doc(db, 'products', params.id);
     const unsubscribe = onSnapshot(docRef, (docSnap) => {
       if (docSnap.exists()) {
-        setProduct({ id: docSnap.id, ...docSnap.data() } as Product);
+        const data = docSnap.data();
+        // Ensure media is an array, provide fallback if it's missing
+        const productData = { id: docSnap.id, ...data, media: data.media || [] } as Product;
+        setProduct(productData);
       } else {
         notFound();
       }
@@ -65,15 +69,39 @@ export default function ProductDetailPage({ params }: { params: { id: string } }
   return (
     <div className="container mx-auto px-4 py-12 md:py-20">
       <div className="grid md:grid-cols-2 gap-8 lg:gap-16">
-        <div className="rounded-lg overflow-hidden border">
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            width={800}
-            height={600}
-            className="w-full h-full object-cover"
-            data-ai-hint={product.imageHint}
-          />
+        <div>
+          {product.media && product.media.length > 0 ? (
+            <Carousel className="w-full">
+              <CarouselContent>
+                {product.media.map((m, index) => (
+                  <CarouselItem key={index}>
+                    <div className="aspect-square relative rounded-lg overflow-hidden border">
+                      {m.type === 'image' ? (
+                        <Image
+                          src={m.url}
+                          alt={`${product.name} - media ${index + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                      ) : (
+                        <video
+                          src={m.url}
+                          controls
+                          className="w-full h-full object-cover"
+                        />
+                      )}
+                    </div>
+                  </CarouselItem>
+                ))}
+              </CarouselContent>
+              <CarouselPrevious className="left-2" />
+              <CarouselNext className="right-2" />
+            </Carousel>
+          ) : (
+             <div className="rounded-lg overflow-hidden border aspect-square flex items-center justify-center bg-muted">
+                <p className="text-muted-foreground">No media available</p>
+             </div>
+          )}
         </div>
 
         <div className="flex flex-col">

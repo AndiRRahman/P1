@@ -1,13 +1,20 @@
+'use client';
+
 import type { User as FirebaseUser, UserInfo } from 'firebase/auth';
 import { Timestamp } from 'firebase/firestore';
+
+export type Media = {
+  url: string;
+  type: 'image' | 'video';
+  path: string; // Storage path
+};
 
 export type Product = {
   id: string;
   name: string;
   description: string;
   price: number;
-  imageUrl: string;
-  imageHint: string;
+  media: Media[]; // Changed from imageUrl to media array
   stockQuantity: number;
   category: string;
 };
@@ -16,7 +23,7 @@ export type CartItem = {
   id: string; 
   name: string;
   price: number;
-  imageUrl: string;
+  imageUrl: string; // Keep single image for cart simplicity
   quantity: number;
 };
 

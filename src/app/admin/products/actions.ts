@@ -5,6 +5,14 @@ import { addDoc, collection, deleteDoc, doc, updateDoc } from 'firebase/firestor
 import { revalidatePath } from 'next/cache';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeAdminApp } from '@/lib/firebase-admin';
+import { getStorage } from 'firebase-admin/storage';
+import type { Media } from '@/lib/definitions';
+
+const MediaSchema = z.object({
+  url: z.string().url(),
+  type: z.enum(['image', 'video']),
+  path: z.string(),
+});
 
 const ProductSchema = z.object({
   id: z.string().optional(),
@@ -13,8 +21,31 @@ const ProductSchema = z.object({
   price: z.coerce.number().min(0.01, 'Price must be positive'),
   stockQuantity: z.coerce.number().int().min(0, 'Stock cannot be negative'),
   category: z.string().min(1, 'Category is required'),
-  imageUrl: z.string().url('Must be a valid URL'),
-  imageHint: z.string().optional(),
+  // Expect a JSON string for media
+  media: z.string().transform((str, ctx) => {
+    try {
+      const parsed = JSON.parse(str);
+      const mediaArray = z.array(MediaSchema).safeParse(parsed);
+      if (!mediaArray.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Invalid media array format',
+        });
+        return z.NEVER;
+      }
+      if (mediaArray.data.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At least one image or video is required.',
+        });
+        return z.NEVER;
+      }
+      return mediaArray.data;
+    } catch (e) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Invalid JSON for media' });
+      return z.NEVER;
+    }
+  }),
 });
 
 const CreateProduct = ProductSchema.omit({ id: true });
@@ -27,7 +58,7 @@ export type State = {
     price?: string[];
     stockQuantity?: string[];
     category?: string[];
-    imageUrl?: string[];
+    media?: string[];
   };
   message?: string | null;
 };
@@ -36,20 +67,19 @@ export async function createProduct(prevState: State, formData: FormData) {
   await initializeAdminApp();
   const db = getFirestore();
   const validatedFields = CreateProduct.safeParse(Object.fromEntries(formData.entries()));
-
+  
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Create Product.',
+      message: 'Missing or invalid fields. Failed to Create Product.',
     };
   }
 
-  const { name, description, price, stockQuantity, category, imageUrl, imageHint } = validatedFields.data;
+  const { name, description, price, stockQuantity, category, media } = validatedFields.data;
 
   try {
     await addDoc(collection(db, 'products'), {
-      name, description, price, stockQuantity, category, imageUrl,
-      imageHint: imageHint || `${name.split(' ').slice(0,2).join(' ')}`,
+      name, description, price, stockQuantity, category, media,
     });
   } catch (error) {
     return { message: 'Database Error: Failed to Create Product.' };
@@ -68,7 +98,7 @@ export async function updateProduct(prevState: State, formData: FormData) {
   if (!validatedFields.success) {
     return {
       errors: validatedFields.error.flatten().fieldErrors,
-      message: 'Missing Fields. Failed to Update Product.',
+      message: 'Missing or invalid fields. Failed to Update Product.',
     };
   }
   
@@ -91,11 +121,27 @@ export async function updateProduct(prevState: State, formData: FormData) {
 }
 
 
-export async function deleteProduct(productId: string) {
+export async function deleteProduct(product: {id: string, media: Media[]}) {
     await initializeAdminApp();
     const db = getFirestore();
+    const storage = getStorage();
+    const bucket = storage.bucket();
+
     try {
-        await deleteDoc(doc(db, 'products', productId));
+        // Delete Firestore document
+        await deleteDoc(doc(db, 'products', product.id));
+
+        // Delete associated files from Storage
+        if (product.media && product.media.length > 0) {
+          const deletePromises = product.media.map(m => {
+            if (m.path) {
+              return bucket.file(m.path).delete().catch(err => console.error(`Failed to delete ${m.path}:`, err));
+            }
+            return Promise.resolve();
+          });
+          await Promise.all(deletePromises);
+        }
+
         revalidatePath('/admin/products');
         revalidatePath('/');
         return { success: true, message: 'Product deleted successfully.' };

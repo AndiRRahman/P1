@@ -6,8 +6,11 @@ export async function initializeAdminApp() {
     }
     
     try {
-        await admin.initializeApp();
+        // When running in a Google Cloud environment, the SDK can auto-discover credentials
+        await admin.initializeApp({
+             storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET
+        });
     } catch(e) {
-        console.error("Could not initialize Firebase Admin SDK");
+        console.error("Could not initialize Firebase Admin SDK", e);
     }
 }

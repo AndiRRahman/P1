@@ -22,6 +22,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [cart]);
   
   const addToCart = (product: Product, quantity: number) => {
+    const firstImage = product.media?.find(m => m.type === 'image');
+    
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
@@ -31,7 +33,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : item
         );
       }
-      return [...prevCart, { ...product, quantity }];
+      return [...prevCart, { 
+        id: product.id, 
+        name: product.name, 
+        price: product.price,
+        // Use first image for cart, or a placeholder
+        imageUrl: firstImage?.url || '/placeholder.png', 
+        quantity 
+      }];
     });
     toast({
         title: "Added to cart",

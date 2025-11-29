@@ -10,7 +10,7 @@ import Image from 'next/image';
 
 type GetColumnsProps = {
   onEdit: (product: Product) => void;
-  onDelete: (productId: string) => void;
+  onDelete: (product: Product) => void;
 };
 
 export const getColumns = ({ onEdit, onDelete }: GetColumnsProps): ColumnDef<Product>[] => [
@@ -19,9 +19,14 @@ export const getColumns = ({ onEdit, onDelete }: GetColumnsProps): ColumnDef<Pro
     header: 'Product',
     cell: ({ row }) => {
         const product = row.original;
+        const firstImage = product.media?.find(m => m.type === 'image');
         return (
             <div className="flex items-center gap-3">
-                <Image src={product.imageUrl} alt={product.name} width={40} height={40} className="rounded-md object-cover"/>
+                {firstImage ? (
+                  <Image src={firstImage.url} alt={product.name} width={40} height={40} className="rounded-md object-cover"/>
+                ) : (
+                  <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center text-muted-foreground text-xs">No img</div>
+                )}
                 <span className="font-medium">{product.name}</span>
             </div>
         )
@@ -75,7 +80,7 @@ export const getColumns = ({ onEdit, onDelete }: GetColumnsProps): ColumnDef<Pro
               Edit Product
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => onDelete(product.id)}
+              onClick={() => onDelete(product)}
               className="text-destructive focus:bg-destructive/10 focus:text-destructive"
             >
               Delete Product

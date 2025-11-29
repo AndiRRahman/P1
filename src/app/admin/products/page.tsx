@@ -24,7 +24,7 @@ export default function AdminProductsPage() {
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-    const [deletingProductId, setDeletingProductId] = useState<string | null>(null);
+    const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
 
@@ -49,15 +49,15 @@ export default function AdminProductsPage() {
         setIsFormOpen(true);
     };
 
-    const handleDeleteRequest = (productId: string) => {
-        setDeletingProductId(productId);
+    const handleDeleteRequest = (product: Product) => {
+        setDeletingProduct(product);
         setIsDeleteDialogOpen(true);
     };
 
     const handleConfirmDelete = async () => {
-        if (!deletingProductId) return;
+        if (!deletingProduct) return;
         setIsDeleting(true);
-        const result = await deleteProduct(deletingProductId);
+        const result = await deleteProduct(deletingProduct);
         if (result.success) {
             toast({ title: 'Success', description: result.message });
         } else {
@@ -65,7 +65,7 @@ export default function AdminProductsPage() {
         }
         setIsDeleting(false);
         setIsDeleteDialogOpen(false);
-        setDeletingProductId(null);
+        setDeletingProduct(null);
     };
 
     const columns = useMemo(() => getColumns({ onEdit: handleEditProduct, onDelete: handleDeleteRequest }), []);
@@ -95,7 +95,7 @@ export default function AdminProductsPage() {
             <DataTable columns={columns} data={products} />
 
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogContent className="sm:max-w-lg">
+                <DialogContent className="sm:max-w-2xl">
                    <ProductForm product={editingProduct} onFormAction={() => setIsFormOpen(false)} />
                 </DialogContent>
             </Dialog>
@@ -105,7 +105,7 @@ export default function AdminProductsPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This action cannot be undone. This will permanently delete the product.
+                            This action cannot be undone. This will permanently delete the product and all its media from storage.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
