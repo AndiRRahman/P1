@@ -198,7 +198,7 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
               <FormItem>
                 <FormLabel>Product Media</FormLabel>
                 <FormControl>
-                  <>
+                  <div>
                     <Input
                       type="file"
                       multiple
@@ -221,7 +221,7 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
                         <p className="text-xs text-gray-500">Images and Videos</p>
                       </div>
                     </label>
-                  </>
+                  </div>
                 </FormControl>
                 <FormMessage />
               </FormItem>
