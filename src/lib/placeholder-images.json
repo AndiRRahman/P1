@@ -1,3 +1,76 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "product-1",
+      "description": "Modern wireless headphones",
+      "imageUrl": "https://images.unsplash.com/photo-1675589052045-6bf67f3374ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxoZWFkcGhvbmVzJTIwdGVjaG5vbG9neXxlbnwwfHx8fDE3NjQzMjk0Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "headphones technology"
+    },
+    {
+      "id": "product-2",
+      "description": "Stylish leather backpack",
+      "imageUrl": "https://images.unsplash.com/photo-1612979022617-b498c5ffbe6d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxiYWNrcGFjayUyMGZhc2hpb258ZW58MHx8fHwxNzY0NDAwNzk4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "backpack fashion"
+    },
+    {
+      "id": "product-3",
+      "description": "Smart watch with fitness tracker",
+      "imageUrl": "https://images.unsplash.com/photo-1668760180303-fcfe2b899e20?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxzbWFydHdhdGNoJTIwdGVjaG5vbG9neXxlbnwwfHx8fDE3NjQzMzQwMDZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "smartwatch technology"
+    },
+    {
+      "id": "product-4",
+      "description": "Organic cotton t-shirt",
+      "imageUrl": "https://images.unsplash.com/photo-1696086152586-09a0855dbc9c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0LXNoaXJ0JTIwYXBwYXJlbHxlbnwwfHx8fDE3NjQ0MDA3OTl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "t-shirt apparel"
+    },
+    {
+      "id": "product-5",
+      "description": "Ceramic coffee mug",
+      "imageUrl": "https://images.unsplash.com/photo-1565357254132-498b686d6c96?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxtdWclMjBraXRjaGVufGVufDB8fHx8MTc2NDQwMDc5OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mug kitchen"
+    },
+    {
+      "id": "product-6",
+      "description": "Minimalist desk lamp",
+      "imageUrl": "https://images.unsplash.com/photo-1717744534180-01cb3a4d2ee6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxsYW1wJTIwaG9tZXxlbnwwfHx8fDE3NjQ0MDA3OTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "lamp home"
+    },
+    {
+      "id": "product-7",
+      "description": "Portable bluetooth speaker",
+      "imageUrl": "https://images.unsplash.com/photo-1762328500592-c6f654d07e6e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxzcGVha2VyJTIwYXVkaW98ZW58MHx8fHwxNzY0MzYyNDEwfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "speaker audio"
+    },
+    {
+      "id": "product-8",
+      "description": "Classic sunglasses",
+      "imageUrl": "https://images.unsplash.com/photo-1718967807816-414e2f9bc95a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxzdW5nbGFzc2VzJTIwZmFzaGlvbnxlbnwwfHx8fDE3NjQzODUyODJ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sunglasses fashion"
+    },
+    {
+      "id": "product-9",
+      "description": "Insulated water bottle",
+      "imageUrl": "https://images.unsplash.com/photo-1759477975699-696bf34fd52c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxib3R0bGUlMjBsaWZlc3R5bGV8ZW58MHx8fHwxNzY0NDAwNzk5fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "bottle lifestyle"
+    },
+    {
+      "id": "product-10",
+      "description": "Cozy wool blanket",
+      "imageUrl": "https://images.unsplash.com/photo-1763694856494-77516d1e6402?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxibGFua2V0JTIwaG9tZXxlbnwwfHx8fDE3NjQzMzg2Mzd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "blanket home"
+    },
+    {
+      "id": "product-11",
+      "description": "Gourmet coffee beans",
+      "imageUrl": "https://images.unsplash.com/photo-1652007762209-79aa8272a4b6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjb2ZmZWUlMjBmb29kfGVufDB8fHx8MTc2NDQwMDc5OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "coffee food"
+    },
+    {
+      "id": "product-12",
+      "description": "Hardcover notebook journal",
+      "imageUrl": "https://images.unsplash.com/photo-1668605335560-b0786d21fd85?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxub3RlYm9vayUyMG9mZmljZXxlbnwwfHx8fDE3NjQ0MDA3OTh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "notebook office"
+    }
+  ]
 }
