@@ -2,7 +2,7 @@
 
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/auth-context';
+import { useUser } from '@/firebase';
 import type { Product } from '@/lib/definitions';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -15,11 +15,11 @@ interface ProductCardProps {
 
 export default function ProductCard({ product }: ProductCardProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user } = useUser();
   const { addToCart } = useCart();
 
   const handleCardClick = () => {
-    if (user?.role === 'guest') {
+    if (!user) {
       router.push('/login');
     } else {
       router.push(`/products/${product.id}`);
@@ -28,7 +28,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (user?.role === 'guest') {
+    if (!user) {
       router.push('/login');
     } else {
       addToCart(product, 1);
