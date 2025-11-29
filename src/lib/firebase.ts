@@ -12,7 +12,24 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let app;
+if (!getApps().length) {
+    try {
+        app = initializeApp(firebaseConfig);
+    } catch (e) {
+        console.error("Firebase initialization error", e);
+        // In some cases, Next.js fast refresh can cause re-initialization issues.
+        // We can try to get the already initialized app.
+        if (!getApps().length) {
+           // This is a real error, rethrow
+           throw e;
+        }
+        app = getApp();
+    }
+} else {
+    app = getApp();
+}
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 
