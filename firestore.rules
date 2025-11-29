@@ -20,8 +20,8 @@
  * - Strict User Data Segregation: All user-specific data is stored under a path
  *   containing the user's ID (e.g., /users/{userId}). Security rules leverage this
  *   path-based ownership to ensure a user can only ever access their own data tree.
- * - No User Listing: The ability to query the entire /users collection is explicitly
- *   disabled to protect user privacy and prevent data scraping.
+ * - No User Listing for non-admins: The ability to query the entire /users collection is explicitly
+ *   disabled for non-admins to protect user privacy and prevent data scraping.
  * - Client-Side Immutability: The /roles_admin collection is read-only for all
  *   client-side requests to prevent users from escalating their own privileges.
  *   Admin roles must be managed from a trusted server environment using the Admin SDK.
@@ -129,13 +129,13 @@ service cloud.firestore {
 
     /**
      * @description User profile data. Users can create and manage their own profile.
-     *   Admins can view/edit profiles for support. Listing all users is denied.
+     *   Admins can view/edit profiles for support. Listing all users is denied for non-admins.
      * @path /users/{userId}
      * @allow (get) A user with uid 'user123' can get '/users/user123'.
      * @allow (create) A new user with uid 'newUser' can create a document at '/users/newUser'.
-     * @deny (list) No user can list all documents in the '/users' collection.
+     * @allow (list) An admin can list all documents in the '/users' collection.
      * @deny (get) A user with uid 'userABC' cannot get '/users/userXYZ'.
-     * @principle Enforces strict data ownership and privacy, preventing user enumeration.
+     * @principle Enforces strict data ownership and privacy, preventing user enumeration for non-admins.
      */
     match /users/{userId} {
       allow get: if isOwnerOrAdmin(userId);
