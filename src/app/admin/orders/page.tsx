@@ -15,7 +15,8 @@ export default function AdminOrdersPage() {
     useEffect(() => {
         if (!firestore) return;
 
-        const ordersQuery = query(collectionGroup(firestore, "orders"), orderBy("orderDate", "desc"));
+        // Kueri Collection Group tanpa orderBy untuk menghindari error indeks
+        const ordersQuery = query(collectionGroup(firestore, "orders"));
         
         const unsubscribe = onSnapshot(ordersQuery, async (querySnapshot) => {
             const userCache = new Map<string, User>();
@@ -41,11 +42,19 @@ export default function AdminOrdersPage() {
                 fetchedOrders.push({ 
                     id: orderDoc.id, 
                     ...orderData,
-                    // Fallback to a default user object if fetch fails or user doesn't exist
+                    // Fallback ke objek user default jika pengambilan gagal
                     User: userData || { id: orderData.userId, firstName: 'Unknown', lastName: 'User', email: '', role: 'customer', address: '', phone: '' }
                 });
             }
-            setOrders(fetchedOrders);
+
+            // Urutkan pesanan di sisi klien
+            const sortedOrders = fetchedOrders.sort((a, b) => {
+                const dateA = (a.orderDate as any)?.toDate ? (a.orderDate as any).toDate() : new Date(a.orderDate);
+                const dateB = (b.orderDate as any)?.toDate ? (b.orderDate as any).toDate() : new Date(b.orderDate);
+                return dateB.getTime() - dateA.getTime();
+            });
+
+            setOrders(sortedOrders);
             setLoading(false);
         }, (error) => {
             console.error("Error fetching orders:", error);
