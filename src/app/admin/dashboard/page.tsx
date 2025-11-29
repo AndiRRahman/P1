@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, Package, ShoppingCart, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, collectionGroup } from 'firebase/firestore';
+import { collection, onSnapshot, query, collectionGroup, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Order } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -21,24 +21,30 @@ export default function DashboardPage() {
     const [stats, setStats] = useState<Stats>({ totalRevenue: 0, totalSales: 0, newOrders: 0, totalProducts: 0, totalCustomers: 0 });
     const [salesData, setSalesData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [allDataLoaded, setAllDataLoaded] = useState({products: false, users: false, orders: false});
+
+    useEffect(() => {
+      if(allDataLoaded.products && allDataLoaded.users && allDataLoaded.orders) {
+        setLoading(false);
+      }
+    }, [allDataLoaded]);
 
     useEffect(() => {
         if (!firestore) return;
 
         const productsQuery = query(collection(firestore, 'products'));
         const ordersQuery = query(collectionGroup(firestore, 'orders'));
-        const usersQuery = query(collection(firestore, 'users'));
+        const usersQuery = query(collection(firestore, 'users'), where('role', '==', 'customer'));
 
         const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
             setStats(prev => ({ ...prev, totalProducts: snapshot.size }));
-            setLoading(false);
-        });
+            setAllDataLoaded(prev => ({...prev, products: true}));
+        }, () => setAllDataLoaded(prev => ({...prev, products: true})));
         
         const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
-            const customerCount = snapshot.docs.filter(doc => doc.data().role !== 'admin').length;
-            setStats(prev => ({ ...prev, totalCustomers: customerCount }));
-            setLoading(false);
-        });
+            setStats(prev => ({ ...prev, totalCustomers: snapshot.size }));
+            setAllDataLoaded(prev => ({...prev, users: true}));
+        }, () => setAllDataLoaded(prev => ({...prev, users: true})));
 
         const unsubOrders = onSnapshot(ordersQuery, (snapshot) => {
             const orders: Order[] = [];
@@ -54,7 +60,7 @@ export default function DashboardPage() {
 
             const monthlySales = orders.reduce((acc, order) => {
                 const orderDate = (order.orderDate as any)?.toDate ? (order.orderDate as any).toDate() : new Date(order.orderDate);
-                if ((order.status === 'Delivered' || order.status === 'Shipped') && orderDate instanceof Date) {
+                if ((order.status === 'Delivered' || order.status === 'Shipped') && orderDate instanceof Date && !isNaN(orderDate.getTime())) {
                     const month = orderDate.toLocaleString('default', { month: 'short' });
                     acc[month] = (acc[month] || 0) + order.totalAmount;
                 }
@@ -64,8 +70,8 @@ export default function DashboardPage() {
             const chartData = Object.entries(monthlySales).map(([name, sales]) => ({ name, sales }));
             setSalesData(chartData);
 
-            setLoading(false);
-        });
+            setAllDataLoaded(prev => ({...prev, orders: true}));
+        }, () => setAllDataLoaded(prev => ({...prev, orders: true})));
 
         return () => {
             unsubProducts();

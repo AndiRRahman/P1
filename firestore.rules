@@ -82,14 +82,14 @@ service cloud.firestore {
      * document's ID in the path, ensuring relational integrity on creation.
      */
     function hasValidUserId(userId) {
-      return request.resource.data.uid == userId;
+      return request.resource.data.id == userId;
     }
     
     /**
      * Ensures the `uid` field of a user document cannot be changed after creation.
      */
     function isUserIdImmutable() {
-      return request.resource.data.uid == resource.data.uid;
+      return request.resource.data.id == resource.data.id;
     }
 
     /**
