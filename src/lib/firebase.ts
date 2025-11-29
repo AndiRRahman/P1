@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,23 +11,9 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
+// Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const auth = getAuth(app);
 const db = getFirestore(app);
-
-if (process.env.NODE_ENV === 'development') {
-    // Check if the emulators are running by seeing if the config is attempting to connect
-    // This is a bit of a hack, but it works for now.
-    // A better approach is to use a specific env variable to enable emulators.
-    if(firebaseConfig.projectId?.includes("demo-")){
-        try {
-            connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-            connectFirestoreEmulator(db, '127.0.0.1', 8080);
-            console.log("Connected to Firebase Emulators");
-        } catch (error) {
-            console.error("Firebase Emulators not running or connection failed.", error);
-        }
-    }
-}
 
 export { app, auth, db };
