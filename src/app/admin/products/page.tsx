@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { ProductForm } from './components/product-form';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { deleteProduct } from '../actions';
+import { deleteProduct } from './actions';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function AdminProductsPage() {
