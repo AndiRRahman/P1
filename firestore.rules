@@ -9,25 +9,27 @@
  * 1. /products/{productId}: A top-level public collection for all product listings.
  * 2. /users/{userId}/...: A user-centric hierarchy where each user's private
  *    data (profile, orders, cart) is nested under their unique ID.
- * 3. /roles_admin/{userId}: A lookup collection where the existence of a document
- *    confirms a user's admin privileges. This is more secure and performant than
- *    embedding a role field within a user document.
+ * 3. A `role` field within each user's document in `/users/{userId}` determines
+ *    their privilege level ('admin' or 'customer').
  *
  * Key Security Decisions:
- * - Admin Role Verification: A user is considered an admin if a document with their
- *   UID exists in the /roles_admin collection. This avoids slow and costly `get()`
- *   calls in other rules.
+ * - Admin Role Verification: A user is considered an admin if their document at
+ *   `/users/{request.auth.uid}` has a `role` field equal to 'admin'. This requires
+ *   a `get()` call within rules but is the most direct way to manage roles.
  * - Strict User Data Segregation: All user-specific data is stored under a path
  *   containing the user's ID (e.g., /users/{userId}). Security rules leverage this
  *   path-based ownership to ensure a user can only ever access their own data tree.
+ * - Admin Read-All Access: Admins are granted broad read access (`get`, `list`)
+ *   across the `users` and `orders` collections for management purposes.
  * - No User Listing for non-admins: The ability to query the entire /users collection is explicitly
  *   disabled for non-admins to protect user privacy and prevent data scraping.
- * - Client-Side Immutability: The /roles_admin collection is read-only for all
- *   client-side requests to prevent users from escalating their own privileges.
- *   Admin roles must be managed from a trusted server environment using the Admin SDK.
+ * - Client-Side Role Immutability: The `role` field on a user document cannot be changed
+ *   by any client-side request to prevent privilege escalation. Roles must be managed
+ *   from a trusted server environment using the Admin SDK or directly in the console.
  * - Prototyping Flexibility: These rules focus on authorization (who can access what)
  *   and relational integrity, but intentionally do not validate the specific shape
  *   or data types of documents. This allows the application schema to evolve
+
  *   rapidly during development without requiring constant rule updates.
  */
 rules_version = '2';
@@ -46,11 +48,11 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the requesting user has admin privileges by checking for
-     * the existence of their UID in the /roles_admin collection.
+     * Checks if the requesting user has admin privileges by reading their
+     * own user document.
      */
     function isAdmin() {
-      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
     /**
@@ -68,7 +70,7 @@ service cloud.firestore {
     function isOwnerOrAdmin(userId) {
       return isOwner(userId) || isAdmin();
     }
-
+    
     /**
      * Ensures an update or delete operation is targeting an existing document.
      * Prevents operations on non-existent paths.
@@ -78,7 +80,7 @@ service cloud.firestore {
     }
 
     /**
-     * Validates that the `uid` field within a new user document matches the
+     * Validates that the `id` field within a new user document matches the
      * document's ID in the path, ensuring relational integrity on creation.
      */
     function hasValidUserId(userId) {
@@ -86,10 +88,17 @@ service cloud.firestore {
     }
     
     /**
-     * Ensures the `uid` field of a user document cannot be changed after creation.
+     * Ensures the `id` field of a user document cannot be changed after creation.
      */
     function isUserIdImmutable() {
       return request.resource.data.id == resource.data.id;
+    }
+
+     /**
+     * Ensures the `role` field cannot be changed by the client.
+     */
+    function isRoleImmutable() {
+      return request.resource.data.role == resource.data.role;
     }
 
     /**
@@ -123,25 +132,24 @@ service cloud.firestore {
      */
     match /products/{productId} {
       allow get, list: if true;
-      allow create: if isAdmin();
-      allow update, delete: if isAdmin() && isExistingDoc();
+      allow create, update, delete: if isAdmin();
     }
 
     /**
      * @description User profile data. Users can create and manage their own profile.
-     *   Admins can view/edit profiles for support. Listing all users is denied for non-admins.
+     *   Admins can view/edit profiles for support. Listing all users is allowed for admins.
      * @path /users/{userId}
-     * @allow (get) A user with uid 'user123' can get '/users/user123'.
+     * @allow (get) A user with uid 'user123' can get '/users/user123'. An admin can get any user.
      * @allow (create) A new user with uid 'newUser' can create a document at '/users/newUser'.
      * @allow (list) An admin can list all documents in the '/users' collection.
      * @deny (get) A user with uid 'userABC' cannot get '/users/userXYZ'.
-     * @principle Enforces strict data ownership and privacy, preventing user enumeration for non-admins.
+     * @principle Enforces strict data ownership and privacy, with admin override for support.
      */
     match /users/{userId} {
       allow get: if isOwnerOrAdmin(userId);
       allow list: if isAdmin();
       allow create: if isOwner(userId) && hasValidUserId(userId);
-      allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isUserIdImmutable();
+      allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isUserIdImmutable() && isRoleImmutable();
       allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
     }
 
@@ -200,18 +208,11 @@ service cloud.firestore {
     }
 
     /**
-     * @description Admin role lookup. Read-only for all clients to prevent privilege escalation.
-     * @path /roles_admin/{userId}
-     * @allow (get) Any signed-in user can check if another user is an admin.
-     * @deny (create) No client can make themselves or anyone else an admin.
-     * @deny (delete) No client can remove an admin role.
-     * @principle Secures critical authorization data by making it immutable from the client.
+     * @description Legacy collection for admin roles. No longer used in favor of the
+     * `role` field in the user document, but kept here for reference and to be explicitly secured.
      */
     match /roles_admin/{userId} {
-      allow get, list: if isSignedIn();
-      allow create: if false;
-      allow update: if false;
-      allow delete: if false;
+      allow read, write: if false;
     }
   }
 }

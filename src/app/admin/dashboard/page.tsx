@@ -3,48 +3,33 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, Package, ShoppingCart, Users } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
-import { collection, onSnapshot, query, collectionGroup, where } from 'firebase/firestore';
+import { collection, onSnapshot, query, collectionGroup, getDoc, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { Order } from '@/lib/definitions';
+import type { Order, User } from '@/lib/definitions';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface Stats {
     totalRevenue: number;
     totalSales: number;
-    newOrders: number;
     totalProducts: number;
     totalCustomers: number;
 }
 
 export default function DashboardPage() {
     const firestore = useFirestore();
-    const [stats, setStats] = useState<Stats>({ totalRevenue: 0, totalSales: 0, newOrders: 0, totalProducts: 0, totalCustomers: 0 });
+    const [stats, setStats] = useState<Stats>({ totalRevenue: 0, totalSales: 0, totalProducts: 0, totalCustomers: 0 });
     const [salesData, setSalesData] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [allDataLoaded, setAllDataLoaded] = useState({products: false, users: false, orders: false});
-
-    useEffect(() => {
-      if(allDataLoaded.products && allDataLoaded.users && allDataLoaded.orders) {
-        setLoading(false);
-      }
-    }, [allDataLoaded]);
 
     useEffect(() => {
         if (!firestore) return;
 
         const productsQuery = query(collection(firestore, 'products'));
         const ordersQuery = query(collectionGroup(firestore, 'orders'));
-        const usersQuery = query(collection(firestore, 'users'), where('role', '==', 'customer'));
 
         const unsubProducts = onSnapshot(productsQuery, (snapshot) => {
             setStats(prev => ({ ...prev, totalProducts: snapshot.size }));
-            setAllDataLoaded(prev => ({...prev, products: true}));
-        }, () => setAllDataLoaded(prev => ({...prev, products: true})));
-        
-        const unsubUsers = onSnapshot(usersQuery, (snapshot) => {
-            setStats(prev => ({ ...prev, totalCustomers: snapshot.size }));
-            setAllDataLoaded(prev => ({...prev, users: true}));
-        }, () => setAllDataLoaded(prev => ({...prev, users: true})));
+        }, () => setLoading(false));
 
         const unsubOrders = onSnapshot(ordersQuery, (snapshot) => {
             const orders: Order[] = [];
@@ -54,9 +39,16 @@ export default function DashboardPage() {
             
             const totalRevenue = orders.reduce((sum, order) => (order.status === 'Delivered' || order.status === 'Shipped') ? sum + order.totalAmount : sum, 0);
             const totalSales = orders.filter(order => order.status === 'Delivered' || order.status === 'Shipped').length;
-            const newOrders = orders.filter(order => order.status === 'Pending').length;
             
-            setStats(prev => ({ ...prev, totalRevenue, totalSales, newOrders }));
+            // Calculate unique customers from orders
+            const uniqueCustomerIds = new Set(orders.map(o => o.userId));
+            
+            setStats(prev => ({ 
+                ...prev, 
+                totalRevenue, 
+                totalSales,
+                totalCustomers: uniqueCustomerIds.size
+            }));
 
             const monthlySales = orders.reduce((acc, order) => {
                 const orderDate = (order.orderDate as any)?.toDate ? (order.orderDate as any).toDate() : new Date(order.orderDate);
@@ -70,13 +62,12 @@ export default function DashboardPage() {
             const chartData = Object.entries(monthlySales).map(([name, sales]) => ({ name, sales }));
             setSalesData(chartData);
 
-            setAllDataLoaded(prev => ({...prev, orders: true}));
-        }, () => setAllDataLoaded(prev => ({...prev, orders: true})));
+            setLoading(false);
+        }, () => setLoading(false));
 
         return () => {
             unsubProducts();
             unsubOrders();
-            unsubUsers();
         }
     }, [firestore]);
 

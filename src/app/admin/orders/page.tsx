@@ -1,44 +1,59 @@
 'use client';
 import { columns } from './components/columns';
 import { DataTable } from './components/data-table';
-import type { Order } from '@/lib/definitions';
+import type { Order, User } from '@/lib/definitions';
 import { useState, useEffect } from 'react';
-import { collectionGroup, onSnapshot, orderBy, query, getDocs, doc, getDoc } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase';
+import { collectionGroup, onSnapshot, orderBy, query, getDoc, doc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { User } from '@/lib/definitions';
 
 export default function AdminOrdersPage() {
     const firestore = useFirestore();
-    const { user: adminUser } = useUser();
     const [orders, setOrders] = useState<Order[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!firestore || !adminUser) return;
+        if (!firestore) return;
 
         const ordersQuery = query(collectionGroup(firestore, "orders"), orderBy("orderDate", "desc"));
         
         const unsubscribe = onSnapshot(ordersQuery, async (querySnapshot) => {
+            const userCache = new Map<string, User>();
             const fetchedOrders: Order[] = [];
+
             for (const orderDoc of querySnapshot.docs) {
                 const orderData = orderDoc.data() as Omit<Order, 'id'>;
-                const userDocRef = doc(firestore, 'users', orderData.userId);
-                const userDoc = await getDoc(userDocRef);
-                const userData = userDoc.data() as User;
+                let userData: User | undefined = userCache.get(orderData.userId);
+
+                if (!userData) {
+                    try {
+                        const userDocRef = doc(firestore, 'users', orderData.userId);
+                        const userDocSnap = await getDoc(userDocRef);
+                        if (userDocSnap.exists()) {
+                            userData = userDocSnap.data() as User;
+                            userCache.set(orderData.userId, userData);
+                        }
+                    } catch (error) {
+                        console.error(`Failed to fetch user ${orderData.userId}`, error);
+                    }
+                }
                 
                 fetchedOrders.push({ 
                     id: orderDoc.id, 
                     ...orderData,
-                    User: userData
+                    // Fallback to a default user object if fetch fails or user doesn't exist
+                    User: userData || { id: orderData.userId, firstName: 'Unknown', lastName: 'User', email: '', role: 'customer', address: '', phone: '' }
                 });
             }
             setOrders(fetchedOrders);
             setLoading(false);
+        }, (error) => {
+            console.error("Error fetching orders:", error);
+            setLoading(false);
         });
 
         return () => unsubscribe();
-    }, [firestore, adminUser]);
+    }, [firestore]);
 
     if (loading) {
         return (
