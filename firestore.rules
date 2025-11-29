@@ -1,0 +1,207 @@
+/**
+ * Core Philosophy: This ruleset enforces a Role-Based Access Control (RBAC) model
+ * with three distinct levels: Guests (unauthenticated), Customers (authenticated),
+ * and Admins. The primary goal is to provide public read access to product data
+ * while strictly securing user-specific data (profiles, orders, carts) to the
+ * data owner or an administrator for support purposes.
+ *
+ * Data Structure: The data is organized into three main areas:
+ * 1. /products/{productId}: A top-level public collection for all product listings.
+ * 2. /users/{userId}/...: A user-centric hierarchy where each user's private
+ *    data (profile, orders, cart) is nested under their unique ID.
+ * 3. /roles_admin/{userId}: A lookup collection where the existence of a document
+ *    confirms a user's admin privileges. This is more secure and performant than
+ *    embedding a role field within a user document.
+ *
+ * Key Security Decisions:
+ * - Admin Role Verification: A user is considered an admin if a document with their
+ *   UID exists in the /roles_admin collection. This avoids slow and costly `get()`
+ *   calls in other rules.
+ * - Strict User Data Segregation: All user-specific data is stored under a path
+ *   containing the user's ID (e.g., /users/{userId}). Security rules leverage this
+ *   path-based ownership to ensure a user can only ever access their own data tree.
+ * - No User Listing: The ability to query the entire /users collection is explicitly
+ *   disabled to protect user privacy and prevent data scraping.
+ * - Client-Side Immutability: The /roles_admin collection is read-only for all
+ *   client-side requests to prevent users from escalating their own privileges.
+ *   Admin roles must be managed from a trusted server environment using the Admin SDK.
+ * - Prototyping Flexibility: These rules focus on authorization (who can access what)
+ *   and relational integrity, but intentionally do not validate the specific shape
+ *   or data types of documents. This allows the application schema to evolve
+ *   rapidly during development without requiring constant rule updates.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    //================================================================================
+    // Helper Functions
+    //================================================================================
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the requesting user has admin privileges by checking for
+     * the existence of their UID in the /roles_admin collection.
+     */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /**
+     * Checks if the requesting user's UID matches the provided userId.
+     * This is the foundation of the user ownership model.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Combines owner and admin checks for resources that can be accessed
+     * by either the owner or an administrator (e.g., user profiles, orders).
+     */
+    function isOwnerOrAdmin(userId) {
+      return isOwner(userId) || isAdmin();
+    }
+
+    /**
+     * Ensures an update or delete operation is targeting an existing document.
+     * Prevents operations on non-existent paths.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    /**
+     * Validates that the `id` field within a new user document matches the
+     * document's ID in the path, ensuring relational integrity on creation.
+     */
+    function hasValidUserId(userId) {
+      return request.resource.data.id == userId;
+    }
+    
+    /**
+     * Ensures the `id` field of a user document cannot be changed after creation.
+     */
+    function isUserIdImmutable() {
+      return request.resource.data.id == resource.data.id;
+    }
+
+    /**
+     * Validates that the `userId` field within a new subcollection document
+     * (e.g., Order, CartItem) matches the user's ID in the path.
+     */
+    function hasValidOwnerId(userId) {
+      return request.resource.data.userId == userId;
+    }
+
+    /**
+     * Ensures the `userId` field of a document cannot be changed after creation,
+     * preventing a document from being reassigned to another user.
+     */
+    function isOwnerIdImmutable() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+
+    //================================================================================
+    // Collection Rules
+    //================================================================================
+
+    /**
+     * @description Publicly readable product catalog. Writes are restricted to admins.
+     * @path /products/{productId}
+     * @allow (get) Any user, signed in or not, can view a specific product.
+     * @allow (create) An admin can create a new product.
+     * @deny (update) A regular user cannot update a product's price.
+     * @principle Public read access for general data, with role-based write restrictions.
+     */
+    match /products/{productId} {
+      allow get, list: if true;
+      allow create: if isAdmin();
+      allow update, delete: if isAdmin() && isExistingDoc();
+    }
+
+    /**
+     * @description User profile data. Users can create and manage their own profile.
+     *   Admins can view/edit profiles for support. Listing all users is denied.
+     * @path /users/{userId}
+     * @allow (get) A user with uid 'user123' can get '/users/user123'.
+     * @allow (create) A new user with uid 'newUser' can create a document at '/users/newUser'.
+     * @deny (list) No user can list all documents in the '/users' collection.
+     * @deny (get) A user with uid 'userABC' cannot get '/users/userXYZ'.
+     * @principle Enforces strict data ownership and privacy, preventing user enumeration.
+     */
+    match /users/{userId} {
+      allow get: if isOwnerOrAdmin(userId);
+      allow list: if false;
+      allow create: if isOwner(userId) && hasValidUserId(userId);
+      allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isUserIdImmutable();
+      allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
+    }
+
+    /**
+     * @description A user's order history. Only the user or an admin can access.
+     * @path /users/{userId}/orders/{orderId}
+     * @allow (create) User 'user123' can create an order at '/users/user123/orders/order456'.
+     * @allow (list) User 'user123' can list all their orders at '/users/user123/orders'.
+     * @deny (get) User 'userABC' cannot get an order from '/users/userXYZ/orders/order789'.
+     * @principle Path-based security inherits ownership from the parent document path.
+     */
+    match /users/{userId}/orders/{orderId} {
+      allow get, list: if isOwnerOrAdmin(userId);
+      allow create: if isOwner(userId) && hasValidOwnerId(userId);
+      allow update: if isOwnerOrAdmin(userId) && isExistingDoc() && isOwnerIdImmutable();
+      allow delete: if isOwnerOrAdmin(userId) && isExistingDoc();
+    }
+
+    /**
+     * @description Items within a specific order. Access rules are inherited from the parent order.
+     * @path /users/{userId}/orders/{orderId}/orderItems/{orderItemId}
+     * @allow (list) User 'user123' can list items for their own order.
+     * @deny (create) User 'userABC' cannot create an item in another user's order.
+     * @principle Deeply nested subcollections are secured by checking ownership at the top-level path segment.
+     */
+    match /users/{userId}/orders/{orderId}/orderItems/{orderItemId} {
+      allow get, list: if isOwnerOrAdmin(userId);
+      allow create: if isOwner(userId);
+      allow update, delete: if isOwnerOrAdmin(userId) && isExistingDoc();
+    }
+
+    /**
+     * @description A user's private shopping cart. Only the user can access their own cart.
+     *   Admins do not have access to a user's cart to ensure privacy.
+     * @path /users/{userId}/cart/{cartItemId}
+     * @allow (create) User 'user123' can add an item to '/users/user123/cart/'.
+     * @deny (get) An admin cannot view the cart of 'user123'.
+     * @deny (list) User 'userABC' cannot list the cart items of 'user123'.
+     * @principle Enforces strict user-only ownership for highly private data.
+     */
+    match /users/{userId}/cart/{cartItemId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && hasValidOwnerId(userId);
+      allow update: if isOwner(userId) && isExistingDoc() && isOwnerIdImmutable();
+      allow delete: if isOwner(userId) && isExistingDoc();
+    }
+
+    /**
+     * @description Admin role lookup. Read-only for all clients to prevent privilege escalation.
+     * @path /roles_admin/{userId}
+     * @allow (get) Any signed-in user can check if another user is an admin.
+     * @deny (create) No client can make themselves or anyone else an admin.
+     * @deny (delete) No client can remove an admin role.
+     * @principle Secures critical authorization data by making it immutable from the client.
+     */
+    match /roles_admin/{userId} {
+      allow get, list: if isSignedIn();
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}
