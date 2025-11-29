@@ -11,54 +11,44 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const { user, isUserLoading } = useUser();
   const router = useRouter();
   const firestore = useFirestore();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // Use null to represent "checking" state
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null: checking, true: admin, false: not admin
 
   useEffect(() => {
-    // If user loading state changes, reset admin status to re-check
-    setIsAdmin(null);
-  }, [user, isUserLoading]);
+    // If user is not loaded and not loading, it means no user is logged in.
+    if (!isUserLoading && !user) {
+      router.push('/login');
+      return;
+    }
 
-  useEffect(() => {
     const checkAdminRole = async () => {
-      // Don't do anything until user state is resolved and firestore is available
-      if (isUserLoading || !firestore) {
-        return;
-      }
-
-      // If user is not logged in, redirect to login
-      if (!user) {
-        router.push('/login');
-        return;
-      }
-      
-      // Check for admin role
-      try {
-        const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-        const adminRoleDoc = await getDoc(adminRoleRef);
-        
-        if (adminRoleDoc.exists()) {
-          setIsAdmin(true); // User is an admin
-        } else {
-          setIsAdmin(false); // User is not an admin, will be redirected
+      if (user && firestore) {
+        try {
+          const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
+          const adminRoleDoc = await getDoc(adminRoleRef);
+          
+          if (adminRoleDoc.exists()) {
+            setIsAdmin(true);
+          } else {
+            setIsAdmin(false);
+            router.push('/'); // Redirect non-admins immediately
+          }
+        } catch (error) {
+          console.error("Error checking admin role:", error);
+          setIsAdmin(false);
+          router.push('/'); // On error, assume not admin and redirect
         }
-      } catch (error) {
-        console.error("Error checking admin role:", error);
-        setIsAdmin(false); // On error, assume not an admin
       }
     };
+    
+    // Only run the check if the user is loaded
+    if (!isUserLoading && user) {
+        checkAdminRole();
+    }
 
-    checkAdminRole();
   }, [user, isUserLoading, router, firestore]);
 
-  // Handle redirection after check is complete
-  useEffect(() => {
-    // We only redirect if isAdmin is explicitly false (not null)
-    if (isAdmin === false) {
-      router.push('/');
-    }
-  }, [isAdmin, router]);
-
-  // Show a loading skeleton while checking user status and role
+  // While checking user or admin status, show a full-page skeleton loader.
+  // This prevents rendering any child components until access is confirmed.
   if (isUserLoading || isAdmin === null) {
     return (
         <div className="flex h-screen w-full items-center justify-center">
@@ -67,7 +57,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // If user is an admin, render the admin layout
+  // Only if isAdmin is explicitly true, render the admin layout.
   if (isAdmin) {
     return (
       <div className="flex min-h-screen">
@@ -79,8 +69,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     );
   }
 
-  // This will be shown briefly before the redirect happens if not an admin.
-  // Or if the redirect logic fails for some reason.
+  // In other cases (like being a non-admin), the redirect has already been triggered.
+  // This loader acts as a fallback while the redirect is in flight.
   return (
     <div className="flex h-screen w-full items-center justify-center">
       <Skeleton className="h-screen w-full" />
