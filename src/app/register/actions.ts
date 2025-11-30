@@ -7,16 +7,14 @@ import { initializeAdminApp } from '@/lib/firebase-admin';
 import { revalidatePath } from 'next/cache';
 
 const RegisterSchema = z.object({
-  firstName: z.string().min(2, { message: 'First name must be at least 2 characters.' }),
-  lastName: z.string().min(2, { message: 'Last name must be at least 2 characters.' }),
+  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
 
 export type State = {
   errors?: {
-    firstName?: string[];
-    lastName?: string[];
+    name?: string[];
     email?: string[];
     password?: string[];
   };
@@ -46,7 +44,7 @@ export async function registerUser(prevState: State, formData: FormData): Promis
     };
   }
 
-  const { firstName, lastName, email, password } = validatedFields.data;
+  const { name, email, password } = validatedFields.data;
 
   try {
     const adminExists = await isAdminUserPresent(db);
@@ -55,15 +53,14 @@ export async function registerUser(prevState: State, formData: FormData): Promis
     const userRecord = await auth.createUser({
       email,
       password,
-      displayName: `${firstName} ${lastName}`,
+      displayName: name,
     });
 
     const userDocRef = db.collection('users').doc(userRecord.uid);
     await userDocRef.set({
       id: userRecord.uid,
       email: email,
-      firstName: firstName,
-      lastName: lastName,
+      name: name,
       role: role,
       address: '',
       phone: '',
@@ -91,3 +88,5 @@ export async function registerUser(prevState: State, formData: FormData): Promis
     };
   }
 }
+
+    

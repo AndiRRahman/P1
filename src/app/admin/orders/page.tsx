@@ -43,7 +43,7 @@ export default function AdminOrdersPage() {
                     id: orderDoc.id, 
                     ...orderData,
                     // Fallback ke objek user default jika pengambilan gagal
-                    User: userData || { id: orderData.userId, firstName: 'Unknown', lastName: 'User', email: '', role: 'customer', address: '', phone: '' }
+                    User: userData || { id: orderData.userId, name: 'Unknown User', email: '', role: 'customer', address: '', phone: '' }
                 });
             }
 
@@ -80,3 +80,5 @@ export default function AdminOrdersPage() {
         </div>
     );
 }
+
+    

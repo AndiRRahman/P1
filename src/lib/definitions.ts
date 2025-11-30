@@ -41,8 +41,7 @@ export type Order = {
 export type User = {
   id: string,
   email: string;
-  firstName: string;
-  lastName: string;
+  name: string;
   role: 'customer' | 'admin';
   address: string;
   phone: string;
@@ -67,3 +66,5 @@ export interface CartContextType {
     cartTotal: number;
     itemCount: number;
 }
+
+    

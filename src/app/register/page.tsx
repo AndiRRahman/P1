@@ -23,8 +23,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 
 const formSchema = z.object({
-  firstName: z.string().min(2, { message: 'First name must be at least 2 characters.' }),
-  lastName: z.string().min(2, { message: 'Last name must be at least 2 characters.' }),
+  name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
 });
@@ -37,8 +36,7 @@ export default function RegisterPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
+      name: '',
       email: '',
       password: '',
     },
@@ -70,7 +68,7 @@ export default function RegisterPage() {
           });
           router.push('/login');
         });
-    } else if (state.message) {
+    } else if (state.message && Object.keys(state.errors || {}).length > 0) {
       toast({
         variant: 'destructive',
         title: 'Registration Failed',
@@ -90,34 +88,19 @@ export default function RegisterPage() {
         <CardContent>
           <Form {...form}>
             <form action={formAction} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
+               <FormField
                   control={form.control}
-                  name="firstName"
+                  name="name"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>First Name</FormLabel>
+                      <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John" {...field} />
+                        <Input placeholder="John Doe" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                 <FormField
-                  control={form.control}
-                  name="lastName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Last Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
               <FormField
                 control={form.control}
                 name="email"
@@ -160,3 +143,5 @@ export default function RegisterPage() {
     </div>
   );
 }
+
+    

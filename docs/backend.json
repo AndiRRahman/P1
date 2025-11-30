@@ -80,13 +80,9 @@
           "description": "Email address of the user.",
           "format": "email"
         },
-        "firstName": {
+        "name": {
           "type": "string",
-          "description": "First name of the user."
-        },
-        "lastName": {
-          "type": "string",
-          "description": "Last name of the user."
+          "description": "Full name of the user."
         },
         "address": {
           "type": "string",
@@ -104,8 +100,7 @@
       "required": [
         "id",
         "email",
-        "firstName",
-        "lastName",
+        "name",
         "address",
         "phone",
         "role"
@@ -342,3 +337,5 @@
     "reasoning": "This Firestore data structure is designed to support the E-Commers V application with guest, user, and admin roles. It prioritizes Authorization Independence, Clarity of Intent, and supports secure listing.  User data is stored in `/users/{userId}` with path-based ownership. Products are stored in the `/products` collection, accessible to all users for reading (guests, users). Admin-only access for product management is handled through the `/roles_admin/{userId}` collection; the existence of a document here grants admin privileges. Orders are stored in `/users/{userId}/orders/{orderId}`, providing path-based ownership, and order items are nested under each order in `/users/{userId}/orders/{orderId}/orderItems/{orderItemId}`. Cart items are managed under `/users/{userId}/cart/{cartItemId}`. This structure ensures clear ownership and avoids hierarchical authorization dependencies. Admins manage products globally within the `/products` collection, and their role is verified by the presence of their user ID in the `/roles_admin` collection. This structure facilitates secure `list` operations (QAPs) by segregating data based on access requirements and using path-based ownership."
   }
 }
+
+    

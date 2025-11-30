@@ -25,8 +25,7 @@ import { useEffect } from 'react';
 import type { User } from '@/lib/definitions';
 
 const formSchema = z.object({
-  firstName: z.string().min(2, "First name is required"),
-  lastName: z.string().min(2, "Last name is required"),
+  name: z.string().min(2, "Full name is required"),
   address: z.string().min(5, "Address is required"),
   phone: z.string().min(5, "Phone is required"),
   card: z.string().regex(/^\d{16}$/, "Invalid card number"),
@@ -44,8 +43,7 @@ export default function CheckoutPage() {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      firstName: '',
-      lastName: '',
+      name: '',
       address: '', 
       phone: '',
       card: '', 
@@ -55,14 +53,13 @@ export default function CheckoutPage() {
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && firestore) {
       const userRef = doc(firestore, 'users', user.uid);
       getDoc(userRef).then(docSnap => {
         if (docSnap.exists()) {
           const userData = docSnap.data() as User;
           form.reset({
-            firstName: userData.firstName || '',
-            lastName: userData.lastName || '',
+            name: userData.name || '',
             address: userData.address || '',
             phone: userData.phone || '',
           });
@@ -110,14 +107,9 @@ export default function CheckoutPage() {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <h3 className="font-semibold text-lg">Shipping Address</h3>
-                        <div className="grid grid-cols-2 gap-4">
-                             <FormField control={form.control} name="firstName" render={({ field }) => (
-                                <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                            )}/>
-                             <FormField control={form.control} name="lastName" render={({ field }) => (
-                                <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                            )}/>
-                        </div>
+                         <FormField control={form.control} name="name" render={({ field }) => (
+                            <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
                         <FormField control={form.control} name="address" render={({ field }) => (
                             <FormItem><FormLabel>Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
@@ -178,3 +170,5 @@ export default function CheckoutPage() {
     </div>
   );
 }
+
+    

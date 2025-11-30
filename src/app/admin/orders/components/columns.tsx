@@ -61,8 +61,8 @@ export const columns: ColumnDef<Order>[] = [
     cell: ({row}) => <span className="font-mono">#{(row.original.id || '').slice(0,7)}</span>
   },
    {
-    id: 'User.firstName', // Explicitly setting the ID
-    accessorKey: 'User.firstName',
+    id: 'customerName',
+    accessorFn: row => row.User?.name,
     header: 'Customer',
   },
   {
@@ -112,3 +112,5 @@ export const columns: ColumnDef<Order>[] = [
     },
   },
 ];
+
+    
