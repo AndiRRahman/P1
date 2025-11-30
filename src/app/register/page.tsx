@@ -17,7 +17,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/use-toast';
-import { useActionState } from 'react';
+import { useActionState, useEffect } from 'react';
 import { registerUser, type State } from './actions';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase';
@@ -45,31 +45,31 @@ export default function RegisterPage() {
   });
 
   const initialState: State = { message: null, errors: {} };
-  const [state, dispatch] = useActionState(registerUser, initialState);
-
-  const handleSubmit = async (formData: FormData) => {
-    dispatch(formData);
-
-    if (state.success && state.role) {
-       toast({
+  const [state, formAction] = useActionState(registerUser, initialState);
+  
+  useEffect(() => {
+    if (state.success) {
+      toast({
         title: 'Account Created',
         description: "Welcome to E-Commers V! Logging you in...",
       });
-      try {
-        await signInWithEmailAndPassword(auth, form.getValues('email'), form.getValues('password'));
-        if (state.role === 'admin') {
-          router.push('/admin/dashboard');
-        } else {
-          router.push('/profile');
-        }
-      } catch (e: any) {
-        toast({
-          variant: 'destructive',
-          title: 'Login after registration failed',
-          description: e.message
+      // Automatically sign in the user after successful registration
+      signInWithEmailAndPassword(auth, form.getValues('email'), form.getValues('password'))
+        .then(() => {
+          if (state.role === 'admin') {
+            router.push('/admin/dashboard');
+          } else {
+            router.push('/profile');
+          }
+        })
+        .catch((e: any) => {
+          toast({
+            variant: 'destructive',
+            title: 'Login after registration failed',
+            description: e.message || "Please log in manually.",
+          });
+          router.push('/login');
         });
-        router.push('/login');
-      }
     } else if (state.message) {
       toast({
         variant: 'destructive',
@@ -77,7 +77,7 @@ export default function RegisterPage() {
         description: state.message,
       });
     }
-  }
+  }, [state, auth, form, router, toast]);
 
 
   return (
@@ -89,7 +89,7 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form action={handleSubmit} className="space-y-6">
+            <form action={formAction} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
