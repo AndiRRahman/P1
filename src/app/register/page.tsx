@@ -16,10 +16,11 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc, getCountFromServer, collection, writeBatch } from 'firebase/firestore';
-import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/components/ui/use-toast';
+import { useActionState } from 'react';
+import { registerUser, type State } from './actions';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { useAuth } from '@/firebase';
 
 const formSchema = z.object({
   firstName: z.string().min(2, { message: 'First name must be at least 2 characters.' }),
@@ -32,7 +33,6 @@ export default function RegisterPage() {
   const router = useRouter();
   const { toast } = useToast();
   const auth = useAuth();
-  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -44,64 +44,41 @@ export default function RegisterPage() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!firestore || !auth) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Firebase not initialized' });
-        return;
-    }
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
-      const displayName = `${values.firstName} ${values.lastName}`;
+  const initialState: State = { message: null, errors: {} };
+  const [state, dispatch] = useActionState(registerUser, initialState);
 
-      await updateProfile(user, { displayName });
+  const handleSubmit = async (formData: FormData) => {
+    dispatch(formData);
 
-      const usersCollection = collection(firestore, 'users');
-      const snapshot = await getCountFromServer(usersCollection);
-      const userCount = snapshot.data().count;
-      const role = userCount === 0 ? 'admin' : 'customer';
-
-      const batch = writeBatch(firestore);
-
-      const userDocRef = doc(firestore, 'users', user.uid);
-      batch.set(userDocRef, {
-        id: user.uid,
-        email: values.email,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        role: role,
-        address: '',
-        phone: '',
-      });
-
-      if (role === 'admin') {
-        const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-        // Set an empty document to signify the user is an admin.
-        // The existence of this document is what's checked in the admin layout.
-        batch.set(adminRoleRef, {});
-      }
-      
-      await batch.commit();
-      
-      toast({
+    if (state.success && state.role) {
+       toast({
         title: 'Account Created',
-        description: "Welcome to E-Commers V!",
+        description: "Welcome to E-Commers V! Logging you in...",
       });
-
-      if (role === 'admin') {
-        router.push('/admin/dashboard');
-      } else {
-        router.push('/profile');
+      try {
+        await signInWithEmailAndPassword(auth, form.getValues('email'), form.getValues('password'));
+        if (state.role === 'admin') {
+          router.push('/admin/dashboard');
+        } else {
+          router.push('/profile');
+        }
+      } catch (e: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Login after registration failed',
+          description: e.message
+        });
+        router.push('/login');
       }
-
-    } catch (error: any) {
+    } else if (state.message) {
       toast({
         variant: 'destructive',
         title: 'Registration Failed',
-        description: error.message || 'An unexpected error occurred.',
+        description: state.message,
       });
     }
   }
+
 
   return (
     <div className="container mx-auto flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
@@ -112,7 +89,7 @@ export default function RegisterPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form action={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
