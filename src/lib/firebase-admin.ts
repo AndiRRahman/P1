@@ -12,24 +12,22 @@ export function initializeAdminApp() {
   // When running in a local development environment (like Firebase Studio),
   // process.env.NODE_ENV will be 'development'.
   if (process.env.NODE_ENV === 'development') {
-    // For local development with emulators, we use a dummy projectId and credentials.
-    // The Admin SDK will automatically connect to the emulators if their
-    // respective environment variables (e.g., FIRESTORE_EMULATOR_HOST) are set,
-    // which they are by default in the Firebase Studio environment.
+    // For local development, we connect to the emulators.
+    // We provide a dummy projectId because the Admin SDK requires one,
+    // but it's not actually used when connecting to local emulators.
     try {
+      // IMPORTANT: Set emulator hosts before initializing the app
+      process.env['FIREBASE_AUTH_EMULATOR_HOST'] = 'localhost:9099';
+      process.env['FIRESTORE_EMULATOR_HOST'] = 'localhost:8080';
+      process.env['FIREBASE_STORAGE_EMULATOR_HOST'] = 'localhost:9199';
+      
       admin.initializeApp({
-        projectId: 'dev-project', // Use a dummy project ID for emulator
-        credential: admin.credential.applicationDefault()
+        projectId: 'dev-project-studio', // Use a consistent dummy project ID
+        storageBucket: 'dev-project-studio.appspot.com',
       });
-      console.log("Firebase Admin SDK initialized for DEVELOPMENT (Emulators).");
+      console.log("Firebase Admin SDK initialized for DEVELOPMENT and connected to emulators.");
     } catch (error: any) {
-        // Fallback for environments where ADC is not available
-        if (error.code === 'GOOGLE_APPLICATION_CREDENTIALS_NOT_SET') {
-             admin.initializeApp({ projectId: 'dev-project' });
-             console.log("Firebase Admin SDK initialized for DEVELOPMENT (Emulators) without credentials.");
-        } else {
-            console.error("Critical: Could not initialize Firebase Admin SDK for development.", error);
-        }
+        console.error("Critical: Could not initialize Firebase Admin SDK for development.", error);
     }
   } else {
     // When deployed to a live environment (like App Hosting),
