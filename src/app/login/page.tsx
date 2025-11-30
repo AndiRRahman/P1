@@ -20,6 +20,7 @@ import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth, useFirestore } from '@/firebase';
 import { useToast } from '@/components/ui/use-toast';
+import type { User } from '@/lib/definitions';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -49,15 +50,16 @@ export default function LoginPage() {
       const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      const adminRoleRef = doc(firestore, 'roles_admin', user.uid);
-      const adminDoc = await getDoc(adminRoleRef);
+      // CORRECT: Check the 'role' field within the user's document in the 'users' collection.
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
       
       toast({
         title: 'Login Successful',
         description: "Welcome back!",
       });
 
-      if (adminDoc.exists()) {
+      if (userDoc.exists() && userDoc.data().role === 'admin') {
         router.push('/admin/dashboard');
       } else {
         router.push('/profile');
