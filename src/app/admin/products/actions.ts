@@ -1,7 +1,6 @@
 'use server';
 
 import { z } from 'zod';
-import { addDoc, collection, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { revalidatePath } from 'next/cache';
 import { getFirestore } from 'firebase-admin/firestore';
 import { initializeAdminApp } from '@/lib/firebase-admin';
@@ -78,7 +77,7 @@ export async function createProduct(prevState: State, formData: FormData) {
   const { name, description, price, stockQuantity, category, media } = validatedFields.data;
 
   try {
-    await addDoc(collection(db, 'products'), {
+    await db.collection('products').add({
       name, description, price, stockQuantity, category, media,
     });
   } catch (error) {
@@ -108,8 +107,8 @@ export async function updateProduct(prevState: State, formData: FormData) {
   }
 
   try {
-    const productRef = doc(db, 'products', id);
-    await updateDoc(productRef, productData);
+    const productRef = db.collection('products').doc(id);
+    await productRef.update(productData);
   } catch (error) {
     return { message: 'Database Error: Failed to Update Product.' };
   }
@@ -129,7 +128,7 @@ export async function deleteProduct(product: {id: string, media: Media[]}) {
 
     try {
         // Delete Firestore document
-        await deleteDoc(doc(db, 'products', product.id));
+        await db.collection('products').doc(product.id).delete();
 
         // Delete associated files from Storage
         if (product.media && product.media.length > 0) {
