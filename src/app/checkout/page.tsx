@@ -69,7 +69,7 @@ export default function CheckoutPage() {
   }, [user, firestore, form]);
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
-    if (!user) {
+    if (!user || !firestore) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'Please log in to place an order.' });
         return router.push('/login');
     }
@@ -80,13 +80,22 @@ export default function CheckoutPage() {
     
     try {
       const orderRef = collection(firestore, 'users', user.uid, 'orders');
+      // Create a clean version of cart items for the order
+      const orderItems = cart.map(item => ({
+        id: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        imageUrl: item.imageUrl
+      }));
+
       await addDoc(orderRef, {
         userId: user.uid,
         orderDate: serverTimestamp(),
         totalAmount: cartTotal,
         status: 'Pending',
         shippingAddress: values.address,
-        items: cart,
+        items: orderItems,
       });
 
       clearCart();
@@ -170,5 +179,3 @@ export default function CheckoutPage() {
     </div>
   );
 }
-
-    
