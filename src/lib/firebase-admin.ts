@@ -21,12 +21,13 @@ export function initializeAdminApp() {
       process.env['FIREBASE_STORAGE_EMULATOR_HOST'] = '127.0.0.1:9199';
       
       admin.initializeApp({
-        projectId: 'dev-project-studio', // Use a consistent dummy project ID
-        storageBucket: 'dev-project-studio.appspot.com',
+        projectId: 'demo-app', // Use a dummy project ID for emulators
+        storageBucket: 'demo-app.appspot.com', // Use a dummy bucket for emulators
       });
       
+      console.log("ADMIN SDK: Connected to Firebase emulators.");
     } catch (error: any) {
-        console.error("Critical: Could not initialize Firebase Admin SDK for development.", error);
+        console.error("ADMIN SDK: Critical - Could not initialize Firebase Admin SDK for development.", error);
     }
   } else {
     // When deployed to a live environment (like App Hosting),
@@ -34,7 +35,7 @@ export function initializeAdminApp() {
     try {
       admin.initializeApp();
     } catch (error) {
-      console.error("Critical: Could not initialize Firebase Admin SDK for production.", error);
+      console.error("ADMIN SDK: Critical - Could not initialize Firebase Admin SDK for production.", error);
     }
   }
 }

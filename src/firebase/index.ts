@@ -6,29 +6,34 @@ import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getStorage, connectStorageEmulator } from 'firebase/storage';
 
+// This flag ensures we only attempt to connect to emulators once.
+let emulatorsConnected = false;
+
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   const isInitialized = getApps().length > 0;
   const app = isInitialized ? getApp() : initializeApp(firebaseConfig);
-  return getSdks(app, isInitialized);
+  return getSdks(app);
 }
 
-export function getSdks(firebaseApp: FirebaseApp, isInitialized: boolean) {
+export function getSdks(firebaseApp: FirebaseApp) {
   const firestore = getFirestore(firebaseApp);
   const auth = getAuth(firebaseApp);
   const storage = getStorage(firebaseApp);
 
-  // Use a flag to ensure emulators are only connected once.
-  if (process.env.NODE_ENV === 'development' && !(globalThis as any)._firebaseEmulatorsConnected) {
+  if (process.env.NODE_ENV === 'development' && !emulatorsConnected) {
     try {
-      connectFirestoreEmulator(firestore, 'localhost', 8080);
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-      connectStorageEmulator(storage, 'localhost', 9199);
-      console.log("CLIENT: Connected to Firebase emulators.");
-      (globalThis as any)._firebaseEmulatorsConnected = true;
+      // Connect to the running emulators
+      connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+      connectStorageEmulator(storage, '127.0.0.1', 9199);
+      console.log("CLIENT SDK: Connected to Firebase emulators.");
+      emulatorsConnected = true; // Set the flag to true after successful connection
     } catch (e: any) {
+      // It's okay if it fails, means emulators aren't running.
+      // We only log a warning if it's not the expected 'failed-precondition' error.
        if (e.code !== 'failed-precondition') {
-         console.warn("CLIENT: Could not connect to Firebase emulators. This is expected if they are not running.", e);
+         console.warn("CLIENT SDK: Could not connect to Firebase emulators. This is expected if they are not running.", e);
        }
     }
   }
