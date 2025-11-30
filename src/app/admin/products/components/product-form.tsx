@@ -116,11 +116,25 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
             }));
           },
           (error) => {
+            console.error("Upload error:", error);
+            // Translate Firebase Storage error codes to user-friendly messages
+            let userMessage = 'An unknown error occurred during upload.';
+            switch (error.code) {
+                case 'storage/unauthorized':
+                    userMessage = "You don't have permission to upload files. Check Storage Rules.";
+                    break;
+                case 'storage/canceled':
+                    userMessage = 'The upload was canceled.';
+                    break;
+                case 'storage/object-not-found':
+                    userMessage = 'The file could not be found. Please try again.';
+                    break;
+            }
             setUploadStatus(prev => ({
               ...prev,
-              [fileName]: { ...prev[fileName], error: error.message }
+              [fileName]: { ...prev[fileName], error: userMessage }
             }));
-            reject(error);
+            reject(new Error(userMessage));
           },
           async () => {
             const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
@@ -142,8 +156,8 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
     try {
       await Promise.all(uploadPromises);
       form.setValue('media', newMedia, { shouldValidate: true });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Some files failed to upload.' });
+    } catch (error: any) {
+      toast({ variant: 'destructive', title: 'Upload Failed', description: error.message || 'Some files failed to upload.' });
     } finally {
       setIsUploading(false);
       // Reset file input
@@ -169,6 +183,7 @@ export function ProductForm({ product, onFormAction }: ProductFormProps) {
       <Form {...form}>
         <form
           action={(formData) => {
+            formData.append('id', product?.id || '');
             const mediaValue = form.getValues('media');
             formData.append('media', JSON.stringify(mediaValue));
             dispatch(formData);
