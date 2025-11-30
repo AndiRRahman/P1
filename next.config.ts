@@ -1,5 +1,4 @@
 import type {NextConfig} from 'next';
-require('dotenv').config({ path: './.env.local' });
 
 const nextConfig: NextConfig = {
   /* config options here */
@@ -32,6 +31,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'http',
         hostname: '127.0.0.1',
+        port: '9199',
+        pathname: '/**',
+      },
+       {
+        protocol: 'http',
+        hostname: 'localhost',
         port: '9199',
         pathname: '/**',
       }
